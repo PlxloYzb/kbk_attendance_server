@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KBK Attendance System - Admin Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="admin-container">
+        <header class="admin-header">
+            <div class="header-left">
+                <h1>KBK Attendance System</h1>
+                <span id="admin-info" class="admin-info"></span>
+            </div>
+            <div class="header-right">
+                <button id="logout-btn" class="btn btn-secondary">Logout</button>
+            </div>
+        </header>
+        
+        <nav class="admin-nav">
+            <button class="nav-btn active" data-section="stats">Department Statistics</button>
+            <button class="nav-btn" data-section="checkin-points">Checkin Points</button>
+            <button class="nav-btn" data-section="checkout-points">Checkout Points</button>
+            <button class="nav-btn" data-section="users">Users</button>
+            <button class="nav-btn" data-section="checkins">Checkins</button>
+            <button class="nav-btn" data-section="export">Export Data</button>
+        </nav>
+        
+        <main class="admin-content">
+            <!-- Department Statistics Section -->
+            <section id="stats-section" class="content-section active">
+                <h2>Department Statistics</h2>
+                <div id="stats-content"></div>
+            </section>
+            
+            <!-- Checkin Points Section -->
+            <section id="checkin-points-section" class="content-section">
+                <h2>Checkin Points Management</h2>
+                <button id="add-checkin-point-btn" class="btn btn-primary">Add Checkin Point</button>
+                <div id="checkin-points-table"></div>
+            </section>
+            
+            <!-- Checkout Points Section -->
+            <section id="checkout-points-section" class="content-section">
+                <h2>Checkout Points Management</h2>
+                <button id="add-checkout-point-btn" class="btn btn-primary">Add Checkout Point</button>
+                <div id="checkout-points-table"></div>
+            </section>
+            
+            <!-- Users Section -->
+            <section id="users-section" class="content-section">
+                <h2>Users Management</h2>
+                <button id="add-user-btn" class="btn btn-primary">Add User</button>
+                <div id="users-table"></div>
+            </section>
+            
+            <!-- Checkins Section -->
+            <section id="checkins-section" class="content-section">
+                <h2>Checkins Management</h2>
+                <div class="filters">
+                    <input type="text" id="checkin-user-filter" placeholder="Filter by User ID">
+                    <select id="checkin-action-filter">
+                        <option value="">All Actions</option>
+                        <option value="IN">Check In</option>
+                        <option value="OUT">Check Out</option>
+                    </select>
+                    <button id="apply-checkin-filter" class="btn btn-secondary">Apply Filter</button>
+                </div>
+                <button id="add-checkin-btn" class="btn btn-primary">Add Checkin</button>
+                <div id="checkins-table"></div>
+            </section>
+            
+            <!-- Export Section -->
+            <section id="export-section" class="content-section">
+                <h2>Export Attendance Data</h2>
+                <p>Export attendance summary data as CSV (Excel compatible).</p>
+                <button id="export-csv-btn" class="btn btn-primary">Export as CSV</button>
+            </section>
+        </main>
+    </div>
+    
+    <!-- Modal for forms -->
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div id="modal-body"></div>
+        </div>
+    </div>
+    
+    <script src="api.js"></script>
+    <script src="auth.js"></script>
+    <script src="admin.js"></script>
+    <script>
+        // Check authentication and role
+        auth.checkAdminAuth();
+        const user = JSON.parse(localStorage.getItem('admin_user') || '{}');
+        if (user.role !== 'admin') {
+            window.location.href = '/ui/department.html';
+        }
+        
+        // Initialize admin dashboard
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('admin-info').textContent = `Welcome, ${user.username} (Admin)`;
+            admin.init();
+        });
+    </script>
+</body>
+</html>

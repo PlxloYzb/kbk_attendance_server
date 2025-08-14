@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KBK Attendance System - Login</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-form">
+            <h1>KBK Attendance System</h1>
+            <h2>Admin Login</h2>
+            
+            <div id="error-message" class="error-message" style="display: none;"></div>
+            
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="username">Username:</label>
+                    <input type="text" id="username" name="username" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Password:</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+                
+                <button type="submit" id="login-btn" class="btn btn-primary">Login</button>
+            </form>
+            
+            <div class="sample-credentials">
+                <h3>Sample Credentials:</h3>
+                <ul>
+                    <li><strong>Admin:</strong> admin / admin123</li>
+                    <li><strong>Office Dept:</strong> office_admin / office123</li>
+                    <li><strong>Mining Dept:</strong> mining_admin / mining123</li>
+                    <li><strong>Warehouse Dept:</strong> warehouse_admin / warehouse123</li>
+                    <li><strong>Standby Dept:</strong> standby_admin / standby123</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    
+    <script src="api.js"></script>
+    <script src="auth.js"></script>
+    <script>
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const errorDiv = document.getElementById('error-message');
+            const loginBtn = document.getElementById('login-btn');
+            
+            // Clear previous errors
+            errorDiv.style.display = 'none';
+            loginBtn.disabled = true;
+            loginBtn.textContent = 'Logging in...';
+            
+            try {
+                const response = await api.adminLogin(username, password);
+                
+                if (response.success) {
+                    // Store token and user info
+                    localStorage.setItem('admin_token', response.data.token);
+                    localStorage.setItem('admin_user', JSON.stringify(response.data.user));
+                    
+                    // Redirect based on role
+                    if (response.data.user.role === 'admin') {
+                        window.location.href = '/ui/admin.html';
+                    } else {
+                        window.location.href = '/ui/department.html';
+                    }
+                } else {
+                    errorDiv.textContent = response.message;
+                    errorDiv.style.display = 'block';
+                }
+            } catch (error) {
+                errorDiv.textContent = 'Login failed. Please try again.';
+                errorDiv.style.display = 'block';
+            }
+            
+            loginBtn.disabled = false;
+            loginBtn.textContent = 'Login';
+        });
+        
+        // Check if already logged in
+        if (localStorage.getItem('admin_token')) {
+            const user = JSON.parse(localStorage.getItem('admin_user') || '{}');
+            if (user.role === 'admin') {
+                window.location.href = '/ui/admin.html';
+            } else {
+                window.location.href = '/ui/department.html';
+            }
+        }
+    </script>
+</body>
+</html>

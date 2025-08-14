@@ -1,0 +1,120 @@
+use chrono::{DateTime, NaiveDate, Utc};
+use serde::{Deserialize, Serialize};
+use sqlx::FromRow;
+
+#[derive(Debug, Serialize, Deserialize, FromRow)]
+pub struct AdminUser {
+    pub id: i32,
+    pub username: String,
+    pub password: String,
+    pub role: String,
+    pub department: Option<i32>,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AdminLoginRequest {
+    pub username: String,
+    pub password: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AdminLoginResponse {
+    pub token: String,
+    pub user: AdminUserInfo,
+}
+
+#[derive(Debug, Serialize, Deserialize, FromRow)]
+pub struct AdminUserInfo {
+    pub id: i32,
+    pub username: String,
+    pub role: String,
+    pub department: Option<i32>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CreatePointRequest {
+    pub latitude: f64,
+    pub longitude: f64,
+    pub radius: f64,
+    pub location_name: String,
+    pub allowed_department: Vec<i32>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UpdatePointRequest {
+    pub latitude: f64,
+    pub longitude: f64,
+    pub radius: f64,
+    pub location_name: String,
+    pub allowed_department: Vec<i32>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CreateUserRequest {
+    pub user_id: String,
+    pub department: i32,
+    pub department_name: Option<String>,
+    pub department_code: Option<String>,
+    pub passkey: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UpdateUserRequest {
+    pub user_id: String,
+    pub department: i32,
+    pub department_name: Option<String>,
+    pub department_code: Option<String>,
+    pub passkey: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CreateCheckinRequest {
+    pub user_id: String,
+    pub action: String,
+    pub created_at: DateTime<Utc>,
+    pub latitude: Option<f64>,
+    pub longitude: Option<f64>,
+    pub is_synced: i32,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UpdateCheckinRequest {
+    pub user_id: String,
+    pub action: String,
+    pub created_at: DateTime<Utc>,
+    pub latitude: Option<f64>,
+    pub longitude: Option<f64>,
+    pub is_synced: i32,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct DepartmentStatsResponse {
+    pub departments: Vec<DepartmentStat>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct DepartmentStat {
+    pub department: i32,
+    pub department_name: Option<String>,
+    pub user_count: i64,
+    pub total_attendance_days: i64,
+    pub avg_work_hours: f64,
+    pub users: Vec<UserAttendanceStat>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UserAttendanceStat {
+    pub user_id: String,
+    pub total_days: i64,
+    pub total_hours: f64,
+    pub last_checkin: Option<DateTime<Utc>>,
+}
+
+#[derive(Debug, Clone)]
+pub struct AdminSession {
+    pub user_id: i32,
+    pub username: String,
+    pub role: String,
+    pub department: Option<i32>,
+}
