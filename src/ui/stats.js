@@ -46,6 +46,7 @@ const stats = {
                     <table class="data-table">
                         <thead>
                             <tr>
+                                <th>User Name</th>
                                 <th>User ID</th>
                                 <th>Total Days</th>
                                 <th>Total Hours</th>
@@ -61,6 +62,7 @@ const stats = {
                 
                 html += `
                     <tr>
+                        <td>${user.user_name || user.user_id}</td>
                         <td>${user.user_id}</td>
                         <td>${user.total_days}</td>
                         <td>${user.total_hours.toFixed(2)}</td>

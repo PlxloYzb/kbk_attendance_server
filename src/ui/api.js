@@ -161,6 +161,38 @@ const api = {
         return this.request(`${this.baseUrl}/stats/department`);
     },
     
+    // Admin Users
+    async getAdminUsers() {
+        return this.request(`${this.baseUrl}/admin-users`);
+    },
+    
+    async createAdminUser(data) {
+        return this.request(`${this.baseUrl}/admin-users`, {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    },
+    
+    async updateAdminUser(id, data) {
+        return this.request(`${this.baseUrl}/admin-users/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        });
+    },
+    
+    async deleteAdminUser(id) {
+        return this.request(`${this.baseUrl}/admin-users/${id}`, {
+            method: 'DELETE'
+        });
+    },
+    
+    async resetAdminPassword(id, data) {
+        return this.request(`${this.baseUrl}/admin-users/${id}/password`, {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        });
+    },
+    
     // Export
     async exportCsv() {
         const token = localStorage.getItem('admin_token');

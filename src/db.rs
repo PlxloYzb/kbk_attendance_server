@@ -496,9 +496,9 @@ async fn create_base_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
         CREATE TABLE IF NOT EXISTS user_info (
             id SERIAL PRIMARY KEY,
             user_id VARCHAR(255) UNIQUE NOT NULL,
+            user_name VARCHAR(255),
             department INTEGER DEFAULT 99,
             department_name VARCHAR(100),
-            department_code VARCHAR(10),
             passkey VARCHAR(255) NOT NULL
         )
         "#
@@ -562,18 +562,6 @@ async fn insert_sample_data(pool: &PgPool) -> Result<(), sqlx::Error> {
     if user_count.0 == 0 {
         log::info!("No users found, inserting sample data...");
         
-        // Insert sample users
-        sqlx::query(
-            r#"
-            INSERT INTO user_info (user_id, department, department_name, department_code, passkey) VALUES
-            ('user_001', 1, 'office', '01', 'test_passkey_001'),
-            ('user_002', 2, 'mining', '02', 'test_passkey_002'),
-            ('user_003', 5, 'warehouse', '05', 'test_passkey_003')
-            ON CONFLICT (user_id) DO NOTHING
-            "#
-        )
-        .execute(pool)
-        .await?;
 
         // Insert sample checkin points
         sqlx::query(
@@ -623,10 +611,29 @@ async fn insert_sample_data(pool: &PgPool) -> Result<(), sqlx::Error> {
             r#"
             INSERT INTO admin_user (username, password, role, department) VALUES
             ('admin', 'admin123', 'admin', NULL),
-            ('office_admin', 'office123', 'department', 1),
-            ('mining_admin', 'mining123', 'department', 2),
-            ('warehouse_admin', 'warehouse123', 'department', 5),
-            ('standby_admin', 'standby123', 'department', 99)
+            ('Office', 'Office123', 'department', 1),
+            ('Mining', 'Mining123', 'department', 2),
+            ('CA', 'CA123', 'department', 3),
+            ('HR', 'HR123', 'department', 4),
+            ('Warehouse', 'Warehouse123', 'department', 5),
+            ('Lab', 'Lab123', 'department', 6),
+            ('Logistics', 'Logistics123', 'department', 7),
+            ('Training', 'Training123', 'department', 8),
+            ('Technic', 'Technic123', 'department', 9),
+            ('Hydro', 'Hydro123', 'department', 10),
+            ('Washing', 'Washing123', 'department', 11),
+            ('Instrument', 'Instrument123', 'department', 12),
+            ('Mobile', 'Mobile123', 'department', 13),
+            ('Dispatch', 'Dispatch123', 'department', 14),
+            ('Beneficiation', 'Beneficiation123', 'department', 15),
+            ('Enterprise', 'Enterprise123', 'department', 16),
+            ('Fixed', 'Fixed123', 'department', 17),
+            ('HSE', 'HSE123', 'department', 18),
+            ('OfficeCamp', 'OfficeCamp123', 'department', 18),
+            ('Equipment', 'Equipment123', 'department', 20),
+            ('Finance', 'Finance123', 'department', 21),
+            ('Medic', 'Medic123', 'department', 22),
+            ('Standby', 'Standby123', 'department', 99)
             ON CONFLICT (username) DO NOTHING
             "#
         )

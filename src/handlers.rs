@@ -13,9 +13,9 @@ pub async fn verify_auth(
         Ok(Some(user)) => {
             let response = UserInfoResponse {
                 user_id: user.user_id,
+                user_name: user.user_name,
                 department: user.department,
                 department_name: user.department_name,
-                department_code: user.department_code,
             };
             HttpResponse::Ok().json(ApiResponse::success(response, "Authentication successful"))
         }

@@ -24,6 +24,7 @@
             <button class="nav-btn" data-section="checkout-points">Checkout Points</button>
             <button class="nav-btn" data-section="users">Users</button>
             <button class="nav-btn" data-section="checkins">Checkins</button>
+            <button class="nav-btn" data-section="admin-users">Admin Users</button>
             <button class="nav-btn" data-section="export">Export Data</button>
         </nav>
         
@@ -71,6 +72,13 @@
                 <div id="checkins-table"></div>
             </section>
             
+            <!-- Admin Users Section -->
+            <section id="admin-users-section" class="content-section">
+                <h2>Admin Users Management</h2>
+                <button id="add-admin-user-btn" class="btn btn-primary">Add Admin User</button>
+                <div id="admin-users-table"></div>
+            </section>
+            
             <!-- Export Section -->
             <section id="export-section" class="content-section">
                 <h2>Export Attendance Data</h2>
@@ -88,9 +96,9 @@
         </div>
     </div>
     
-    <script src="api.js"></script>
-    <script src="auth.js"></script>
-    <script src="admin.js"></script>
+    <script src="api.js?v=1.4"></script>
+    <script src="auth.js?v=1.4"></script>
+    <script src="admin.js?v=1.4"></script>
     <script>
         // Check authentication and role
         auth.checkAdminAuth();

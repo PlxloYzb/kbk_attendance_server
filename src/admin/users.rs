@@ -43,15 +43,15 @@ pub async fn create_user(
 
     match sqlx::query_as::<_, UserInfo>(
         r#"
-        INSERT INTO user_info (user_id, department, department_name, department_code, passkey)
+        INSERT INTO user_info (user_id, user_name, department, department_name, passkey)
         VALUES ($1, $2, $3, $4, $5)
         RETURNING *
         "#
     )
     .bind(&user_req.user_id)
+    .bind(&user_req.user_name)
     .bind(user_req.department)
     .bind(&user_req.department_name)
-    .bind(&user_req.department_code)
     .bind(&user_req.passkey)
     .fetch_one(pool.as_ref())
     .await
@@ -84,15 +84,15 @@ pub async fn update_user(
     match sqlx::query_as::<_, UserInfo>(
         r#"
         UPDATE user_info 
-        SET user_id = $1, department = $2, department_name = $3, department_code = $4, passkey = $5
+        SET user_id = $1, user_name = $2, department = $3, department_name = $4, passkey = $5
         WHERE id = $6
         RETURNING *
         "#
     )
     .bind(&user_req.user_id)
+    .bind(&user_req.user_name)
     .bind(user_req.department)
     .bind(&user_req.department_name)
-    .bind(&user_req.department_code)
     .bind(&user_req.passkey)
     .bind(id)
     .fetch_optional(pool.as_ref())

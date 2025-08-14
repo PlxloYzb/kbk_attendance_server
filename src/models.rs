@@ -62,18 +62,18 @@ pub struct CheckoutPoint {
 pub struct UserInfo {
     pub id: i32,
     pub user_id: String,
+    pub user_name: Option<String>,
     pub department: i32,
     pub department_name: Option<String>,
-    pub department_code: Option<String>,
     pub passkey: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct UserInfoResponse {
     pub user_id: String,
+    pub user_name: Option<String>,
     pub department: i32,
     pub department_name: Option<String>,
-    pub department_code: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, FromRow)]

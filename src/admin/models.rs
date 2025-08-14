@@ -1,4 +1,4 @@
-use chrono::{DateTime, NaiveDate, Utc};
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 
@@ -53,18 +53,18 @@ pub struct UpdatePointRequest {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CreateUserRequest {
     pub user_id: String,
+    pub user_name: Option<String>,
     pub department: i32,
     pub department_name: Option<String>,
-    pub department_code: Option<String>,
     pub passkey: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct UpdateUserRequest {
     pub user_id: String,
+    pub user_name: Option<String>,
     pub department: i32,
     pub department_name: Option<String>,
-    pub department_code: Option<String>,
     pub passkey: String,
 }
 
@@ -106,9 +106,40 @@ pub struct DepartmentStat {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct UserAttendanceStat {
     pub user_id: String,
+    pub user_name: Option<String>,
     pub total_days: i64,
     pub total_hours: f64,
     pub last_checkin: Option<DateTime<Utc>>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AdminUserResponse {
+    pub id: i32,
+    pub username: String,
+    pub role: String,
+    pub department: Option<i32>,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CreateAdminUserRequest {
+    pub username: String,
+    pub password: String,
+    pub role: String,
+    pub department: Option<i32>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UpdateAdminUserRequest {
+    pub username: String,
+    pub password: Option<String>,
+    pub role: String,
+    pub department: Option<i32>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ResetPasswordRequest {
+    pub new_password: String,
 }
 
 #[derive(Debug, Clone)]

@@ -3,7 +3,7 @@ use sqlx::PgPool;
 
 use crate::admin::auth::require_admin_auth;
 use crate::admin::models::{DepartmentStatsResponse, DepartmentStat, UserAttendanceStat};
-use crate::models::{ApiResponse, AttendanceSummary};
+use crate::models::ApiResponse;
 
 pub async fn get_department_stats(
     pool: web::Data<PgPool>,
@@ -71,25 +71,27 @@ pub async fn get_department_stats(
         let users_query = r#"
             SELECT 
                 ui.user_id,
+                ui.user_name,
                 COUNT(DISTINCT ats.date) as total_days,
                 CAST(COALESCE(SUM(ats.total_work_minutes), 0) / 60.0 AS FLOAT8) as total_hours,
                 MAX(ats.last_checkout_time) as last_checkin
             FROM user_info ui
             LEFT JOIN attendance_summary ats ON ui.user_id = ats.user_id
             WHERE ui.department = $1
-            GROUP BY ui.user_id
+            GROUP BY ui.user_id, ui.user_name
             ORDER BY ui.user_id
         "#;
 
-        let users_result = sqlx::query_as::<_, (String, i64, f64, Option<chrono::DateTime<chrono::Utc>>)>(users_query)
+        let users_result = sqlx::query_as::<_, (String, Option<String>, i64, f64, Option<chrono::DateTime<chrono::Utc>>)>(users_query)
             .bind(department)
             .fetch_all(pool.as_ref())
             .await;
 
         let users = match users_result {
-            Ok(rows) => rows.into_iter().map(|(user_id, total_days, total_hours, last_checkin)| {
+            Ok(rows) => rows.into_iter().map(|(user_id, user_name, total_days, total_hours, last_checkin)| {
                 UserAttendanceStat {
                     user_id,
+                    user_name,
                     total_days,
                     total_hours,
                     last_checkin,
@@ -121,7 +123,7 @@ pub async fn get_department_stats(
 pub async fn export_attendance_csv(
     pool: web::Data<PgPool>,
     req: HttpRequest,
-    query: web::Query<ExportQuery>,
+    _query: web::Query<ExportQuery>,
 ) -> HttpResponse {
     let session = match require_admin_auth(&req) {
         Ok(session) => session,
@@ -221,7 +223,7 @@ pub async fn export_attendance_csv(
 
 #[derive(serde::Deserialize)]
 pub struct ExportQuery {
-    pub department: Option<i32>,
-    pub start_date: Option<chrono::NaiveDate>,
-    pub end_date: Option<chrono::NaiveDate>,
+    pub _department: Option<i32>,
+    pub _start_date: Option<chrono::NaiveDate>,
+    pub _end_date: Option<chrono::NaiveDate>,
 }

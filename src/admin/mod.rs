@@ -4,6 +4,7 @@ pub mod points;
 pub mod users;
 pub mod checkins;
 pub mod stats;
+pub mod admin_users;
 
 use actix_web::web;
 
@@ -42,6 +43,14 @@ pub fn admin_routes() -> actix_web::Scope {
                     web::scope("/stats")
                         .route("/department", web::get().to(stats::get_department_stats))
                         .route("/export", web::get().to(stats::export_attendance_csv))
+                )
+                .service(
+                    web::scope("/admin-users")
+                        .route("", web::get().to(admin_users::get_admin_users))
+                        .route("", web::post().to(admin_users::create_admin_user))
+                        .route("/{id}", web::put().to(admin_users::update_admin_user))
+                        .route("/{id}", web::delete().to(admin_users::delete_admin_user))
+                        .route("/{id}/password", web::put().to(admin_users::reset_admin_password))
                 )
         )
 }

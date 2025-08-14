@@ -74,9 +74,9 @@ CREATE TABLE IF NOT EXISTS checkout_points (
 CREATE TABLE IF NOT EXISTS user_info (
     id SERIAL PRIMARY KEY,
     user_id VARCHAR(255) UNIQUE NOT NULL,
+    user_name VARCHAR(255),
     department INTEGER DEFAULT 99,
     department_name VARCHAR(100),
-    department_code VARCHAR(10),
     passkey VARCHAR(255) NOT NULL
 );
 
@@ -213,8 +213,8 @@ SELECT * FROM (VALUES
 WHERE NOT EXISTS (SELECT 1 FROM checkout_points);
 
 -- Insert sample users
-INSERT INTO user_info (user_id, department, department_name, department_code, passkey) VALUES
-('user_001', 1, 'office', '01', 'test_passkey_001'),
-('user_002', 2, 'mining', '02', 'test_passkey_002'),
-('user_003', 5, 'warehouse', '05', 'test_passkey_003')
+INSERT INTO user_info (user_id, user_name, department, department_name, passkey) VALUES
+('user_001', '张三', 1, 'office', 'test_passkey_001'),
+('user_002', '李四', 2, 'mining', 'test_passkey_002'),
+('user_003', '王五', 5, 'warehouse', 'test_passkey_003')
 ON CONFLICT (user_id) DO NOTHING;

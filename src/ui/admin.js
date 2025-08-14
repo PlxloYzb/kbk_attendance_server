@@ -74,6 +74,9 @@ const admin = {
             case 'checkins':
                 await this.loadCheckins();
                 break;
+            case 'admin-users':
+                await this.loadAdminUsers();
+                break;
             case 'export':
                 this.setupExport();
                 break;
@@ -128,6 +131,7 @@ const admin = {
                     <table class="data-table">
                         <thead>
                             <tr>
+                                <th>User Name</th>
                                 <th>User ID</th>
                                 <th>Total Days</th>
                                 <th>Total Hours</th>
@@ -143,6 +147,7 @@ const admin = {
                 
                 html += `
                     <tr>
+                        <td>${user.user_name || user.user_id}</td>
                         <td>${user.user_id}</td>
                         <td>${user.total_days}</td>
                         <td>${user.total_hours.toFixed(2)}</td>
@@ -421,9 +426,9 @@ const admin = {
                     <tr>
                         <th>ID</th>
                         <th>User ID</th>
+                        <th>User Name</th>
                         <th>Department</th>
                         <th>Department Name</th>
-                        <th>Department Code</th>
                         <th>Passkey</th>
                         <th>Actions</th>
                     </tr>
@@ -436,9 +441,9 @@ const admin = {
                 <tr>
                     <td>${user.id}</td>
                     <td>${user.user_id}</td>
+                    <td>${user.user_name || 'N/A'}</td>
                     <td>${user.department}</td>
                     <td>${user.department_name || 'N/A'}</td>
-                    <td>${user.department_code || 'N/A'}</td>
                     <td>${user.passkey}</td>
                     <td class="actions">
                         <button class="btn btn-secondary" onclick="admin.editUser(${user.id})">Edit</button>
@@ -469,6 +474,11 @@ const admin = {
                     </div>
                     
                     <div class="form-group">
+                        <label for="user_name">User Name (姓名):</label>
+                        <input type="text" id="user_name" name="user_name" value="${user ? user.user_name || '' : ''}" placeholder="请输入中文姓名">
+                    </div>
+                    
+                    <div class="form-group">
                         <label for="department">Department:</label>
                         <input type="number" id="department" name="department" value="${user ? user.department : ''}" required>
                     </div>
@@ -478,10 +488,6 @@ const admin = {
                         <input type="text" id="department_name" name="department_name" value="${user ? user.department_name || '' : ''}">
                     </div>
                     
-                    <div class="form-group">
-                        <label for="department_code">Department Code:</label>
-                        <input type="text" id="department_code" name="department_code" value="${user ? user.department_code || '' : ''}">
-                    </div>
                     
                     <div class="form-group">
                         <label for="passkey">Passkey:</label>
@@ -511,9 +517,9 @@ const admin = {
         
         const data = {
             user_id: formData.get('user_id'),
+            user_name: formData.get('user_name') || null,
             department: parseInt(formData.get('department')),
             department_name: formData.get('department_name') || null,
-            department_code: formData.get('department_code') || null,
             passkey: formData.get('passkey')
         };
         
@@ -813,5 +819,249 @@ const admin = {
                 alert('Export failed: ' + error.message);
             }
         };
+    },
+    
+    // Admin Users Management
+    async loadAdminUsers() {
+        const container = document.getElementById('admin-users-table');
+        container.innerHTML = '<div class="loading">Loading admin users...</div>';
+        
+        document.getElementById('add-admin-user-btn').onclick = () => {
+            this.showAdminUserForm();
+        };
+        
+        try {
+            const response = await api.getAdminUsers();
+            if (response.success) {
+                this.displayAdminUsersTable(response.data, container);
+            } else {
+                container.innerHTML = '<p class="error">Failed to load admin users</p>';
+            }
+        } catch (error) {
+            container.innerHTML = '<p class="error">Error loading admin users</p>';
+        }
+    },
+    
+    displayAdminUsersTable(adminUsers, container) {
+        if (!adminUsers || adminUsers.length === 0) {
+            container.innerHTML = '<p>No admin users found</p>';
+            return;
+        }
+        
+        let html = `
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Username</th>
+                        <th>Role</th>
+                        <th>Department</th>
+                        <th>Created At</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+        
+        adminUsers.forEach(user => {
+            const createdAt = new Date(user.created_at).toLocaleString();
+            const departmentDisplay = user.department || 'N/A';
+            
+            html += `
+                <tr>
+                    <td>${user.id}</td>
+                    <td>${user.username}</td>
+                    <td>${user.role}</td>
+                    <td>${departmentDisplay}</td>
+                    <td>${createdAt}</td>
+                    <td class="actions">
+                        <button class="btn btn-secondary" onclick="admin.editAdminUser(${user.id})">Edit</button>
+                        <button class="btn btn-warning" onclick="admin.resetAdminPassword(${user.id})">Reset Password</button>
+                        <button class="btn btn-danger" onclick="admin.deleteAdminUser(${user.id})">Delete</button>
+                    </td>
+                </tr>
+            `;
+        });
+        
+        html += '</tbody></table>';
+        container.innerHTML = html;
+    },
+    
+    showAdminUserForm(user = null) {
+        const isEdit = user !== null;
+        const title = isEdit ? 'Edit Admin User' : 'Create Admin User';
+        
+        const form = `
+            <div class="modal-header">
+                <h3>${title}</h3>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="admin-user-form">
+                    <div class="form-group">
+                        <label for="admin_username">Username:</label>
+                        <input type="text" id="admin_username" name="username" value="${user ? user.username : ''}" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="admin_password">Password:</label>
+                        <input type="password" id="admin_password" name="password" ${isEdit ? '' : 'required'}>
+                        ${isEdit ? '<small>Leave empty to keep current password</small>' : ''}
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="admin_role">Role:</label>
+                        <select id="admin_role" name="role" required>
+                            <option value="admin" ${user && user.role === 'admin' ? 'selected' : ''}>Admin</option>
+                            <option value="department" ${user && user.role === 'department' ? 'selected' : ''}>Department</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="admin_department">Department:</label>
+                        <select id="admin_department" name="department">
+                            <option value="">None (Admin only)</option>
+                            <option value="1" ${user && user.department === 1 ? 'selected' : ''}>1 - Office</option>
+                            <option value="2" ${user && user.department === 2 ? 'selected' : ''}>2 - Mining</option>
+                            <option value="3" ${user && user.department === 3 ? 'selected' : ''}>3 - CA</option>
+                            <option value="4" ${user && user.department === 4 ? 'selected' : ''}>4 - HR</option>
+                            <option value="5" ${user && user.department === 5 ? 'selected' : ''}>5 - Warehouse</option>
+                            <option value="6" ${user && user.department === 6 ? 'selected' : ''}>6 - Lab</option>
+                            <option value="7" ${user && user.department === 7 ? 'selected' : ''}>7 - Logistics</option>
+                            <option value="8" ${user && user.department === 8 ? 'selected' : ''}>8 - Training</option>
+                            <option value="9" ${user && user.department === 9 ? 'selected' : ''}>9 - Technic</option>
+                            <option value="10" ${user && user.department === 10 ? 'selected' : ''}>10 - Hydro</option>
+                            <option value="99" ${user && user.department === 99 ? 'selected' : ''}>99 - Standby</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" onclick="document.getElementById('modal').style.display='none'">Cancel</button>
+                        <button type="submit" class="btn btn-primary">${isEdit ? 'Update' : 'Create'}</button>
+                    </div>
+                </form>
+            </div>
+        `;
+        
+        document.getElementById('modal-body').innerHTML = form;
+        document.getElementById('modal').style.display = 'block';
+        
+        // Handle role change to show/hide department field
+        document.getElementById('admin_role').addEventListener('change', function() {
+            const deptField = document.getElementById('admin_department');
+            const deptGroup = deptField.closest('.form-group');
+            if (this.value === 'department') {
+                deptGroup.style.display = 'block';
+                deptField.required = true;
+            } else {
+                deptGroup.style.display = 'none';
+                deptField.required = false;
+                deptField.value = '';
+            }
+        });
+        
+        // Trigger role change event to set initial state
+        document.getElementById('admin_role').dispatchEvent(new Event('change'));
+        
+        // Handle form submission
+        document.getElementById('admin-user-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const data = {
+                username: formData.get('username'),
+                role: formData.get('role'),
+                department: formData.get('department') ? parseInt(formData.get('department')) : null
+            };
+            
+            if (formData.get('password')) {
+                data.password = formData.get('password');
+            }
+            
+            await this.saveAdminUser(user ? user.id : null, data);
+        });
+        
+        // Handle close button
+        document.querySelector('.close').onclick = () => {
+            document.getElementById('modal').style.display = 'none';
+        };
+    },
+    
+    async saveAdminUser(id, data) {
+        try {
+            let response;
+            if (id) {
+                response = await api.updateAdminUser(id, data);
+            } else {
+                response = await api.createAdminUser(data);
+            }
+            
+            if (response.success) {
+                document.getElementById('modal').style.display = 'none';
+                this.loadAdminUsers();
+            } else {
+                alert('Error: ' + response.message);
+            }
+        } catch (error) {
+            alert('Error saving admin user: ' + error.message);
+        }
+    },
+    
+    async editAdminUser(id) {
+        try {
+            const response = await api.getAdminUsers();
+            if (response.success) {
+                const user = response.data.find(u => u.id === id);
+                if (user) {
+                    this.showAdminUserForm(user);
+                } else {
+                    alert('Admin user not found');
+                }
+            } else {
+                alert('Error loading admin user: ' + response.message);
+            }
+        } catch (error) {
+            alert('Error loading admin user: ' + error.message);
+        }
+    },
+    
+    async deleteAdminUser(id) {
+        if (!confirm('Are you sure you want to delete this admin user?')) {
+            return;
+        }
+        
+        try {
+            const response = await api.deleteAdminUser(id);
+            if (response.success) {
+                this.loadAdminUsers();
+            } else {
+                alert('Error: ' + response.message);
+            }
+        } catch (error) {
+            alert('Error deleting admin user: ' + error.message);
+        }
+    },
+    
+    async resetAdminPassword(id) {
+        const newPassword = prompt('Enter new password:');
+        if (!newPassword) {
+            return;
+        }
+        
+        if (newPassword.length < 6) {
+            alert('Password must be at least 6 characters long');
+            return;
+        }
+        
+        try {
+            const response = await api.resetAdminPassword(id, { new_password: newPassword });
+            if (response.success) {
+                alert('Password reset successfully');
+            } else {
+                alert('Error: ' + response.message);
+            }
+        } catch (error) {
+            alert('Error resetting password: ' + error.message);
+        }
     }
 };
