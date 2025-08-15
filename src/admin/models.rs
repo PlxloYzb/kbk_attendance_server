@@ -180,6 +180,44 @@ pub struct UserDetailRecord {
     pub is_early_leave: bool,
 }
 
+#[derive(Debug, Serialize, Deserialize, FromRow)]
+pub struct UserTimeSetting {
+    pub id: i32,
+    pub user_id: String,
+    pub on_duty_time: chrono::NaiveTime,
+    pub off_duty_time: chrono::NaiveTime,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CreateUserTimeSettingRequest {
+    pub user_id: String,
+    pub on_duty_time: String, // Format: "HH:MM:SS"
+    pub off_duty_time: String, // Format: "HH:MM:SS"
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UpdateUserTimeSettingRequest {
+    pub on_duty_time: String, // Format: "HH:MM:SS"
+    pub off_duty_time: String, // Format: "HH:MM:SS"
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BatchUpdateTimeSettingsRequest {
+    pub settings: Vec<CreateUserTimeSettingRequest>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UserWithTimeSetting {
+    pub user_id: String,
+    pub user_name: Option<String>,
+    pub department: i32,
+    pub department_name: Option<String>,
+    pub on_duty_time: Option<chrono::NaiveTime>,
+    pub off_duty_time: Option<chrono::NaiveTime>,
+}
+
 #[derive(Debug, Clone)]
 pub struct AdminSession {
     pub user_id: i32,

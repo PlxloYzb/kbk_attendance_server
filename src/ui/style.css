@@ -588,6 +588,141 @@ body {
     color: #2c3e50;
 }
 
+/* Time Settings Styles */
+.time-settings-filters {
+    background: white;
+    padding: 20px;
+    border-radius: 4px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.time-settings-table-container {
+    background: white;
+    border-radius: 4px;
+    overflow-x: auto;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+}
+
+.time-settings-table {
+    width: 100%;
+    min-width: 800px;
+}
+
+.time-settings-table .time-input {
+    padding: 4px 8px;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    font-size: 14px;
+    width: 80px;
+    text-align: center;
+}
+
+.time-settings-table .time-input:focus {
+    outline: none;
+    border-color: #3498db;
+    box-shadow: 0 0 3px rgba(52, 152, 219, 0.3);
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.status-badge.custom {
+    background-color: #e8f5e8;
+    color: #2e7d32;
+    border: 1px solid #4caf50;
+}
+
+.status-badge.default {
+    background-color: #fff3e0;
+    color: #f57c00;
+    border: 1px solid #ff9800;
+}
+
+.time-settings-actions {
+    background: white;
+    padding: 20px;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.batch-actions h4 {
+    margin-bottom: 15px;
+    color: #2c3e50;
+}
+
+.batch-controls {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.time-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.time-group label {
+    font-size: 12px;
+    font-weight: 500;
+    color: #666;
+}
+
+.time-group input[type="time"] {
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.user-checkbox {
+    transform: scale(1.1);
+    margin: 0;
+}
+
+.info-text {
+    text-align: center;
+    color: #666;
+    font-style: italic;
+    padding: 40px 20px;
+}
+
+.btn-warning {
+    background-color: #f39c12;
+    border-color: #e67e22;
+}
+
+.btn-warning:hover {
+    background-color: #e67e22;
+    border-color: #d35400;
+}
+
+.btn-success {
+    background-color: #27ae60;
+    border-color: #27ae60;
+    color: white;
+}
+
+.btn-success:hover {
+    background-color: #229954;
+    border-color: #1e8449;
+}
+
+.btn-success:disabled {
+    background-color: #95a5a6;
+    border-color: #95a5a6;
+    opacity: 0.6;
+}
+
 /* Enhanced modal styles */
 .modal {
     display: none;
@@ -707,6 +842,39 @@ body {
     .btn-small {
         padding: 8px 12px;
         font-size: 11px;
+    }
+    
+    /* Time Settings Responsive */
+    .time-settings-table {
+        min-width: 600px;
+        font-size: 12px;
+    }
+    
+    .time-settings-table .time-input {
+        width: 70px;
+        padding: 3px 6px;
+        font-size: 12px;
+    }
+    
+    .batch-controls {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+    
+    .time-group {
+        flex-direction: row;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .time-group label {
+        min-width: 80px;
+    }
+    
+    .status-badge {
+        font-size: 10px;
+        padding: 1px 6px;
     }
 }
 

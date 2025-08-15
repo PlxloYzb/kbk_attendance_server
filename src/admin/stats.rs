@@ -442,25 +442,28 @@ pub async fn get_user_detail(
         chrono::NaiveDate::from_ymd_opt(query.year, query.month + 1, 1).unwrap()
     };
 
-    // Get detailed attendance records for the user and month
+    // Get detailed attendance records for the user and month with custom time settings
     let records_query = r#"
         SELECT 
-            date,
-            first_checkin_time,
-            last_checkout_time,
-            total_work_minutes,
-            total_sessions,
+            ats.date,
+            ats.first_checkin_time,
+            ats.last_checkout_time,
+            ats.total_work_minutes,
+            ats.total_sessions,
             CASE 
-                WHEN first_checkin_time IS NOT NULL AND EXTRACT(HOUR FROM first_checkin_time) > 9 THEN true
+                WHEN ats.first_checkin_time IS NOT NULL AND 
+                     ats.first_checkin_time::time > COALESCE(uts.on_duty_time, '09:00:00'::time) THEN true
                 ELSE false
             END as is_late,
             CASE 
-                WHEN last_checkout_time IS NOT NULL AND EXTRACT(HOUR FROM last_checkout_time) < 18 THEN true
+                WHEN ats.last_checkout_time IS NOT NULL AND 
+                     ats.last_checkout_time::time < COALESCE(uts.off_duty_time, '18:00:00'::time) THEN true
                 ELSE false
             END as is_early_leave
-        FROM attendance_summary
-        WHERE user_id = $1 AND date >= $2 AND date < $3
-        ORDER BY date ASC
+        FROM attendance_summary ats
+        LEFT JOIN user_time_settings uts ON ats.user_id = uts.user_id
+        WHERE ats.user_id = $1 AND ats.date >= $2 AND ats.date < $3
+        ORDER BY ats.date ASC
     "#;
 
     let records_result = sqlx::query_as::<_, (chrono::NaiveDate, Option<chrono::DateTime<chrono::Utc>>, Option<chrono::DateTime<chrono::Utc>>, Option<i32>, Option<i32>, bool, bool)>(records_query)

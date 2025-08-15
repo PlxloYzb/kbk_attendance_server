@@ -213,6 +213,28 @@ const api = {
             body: JSON.stringify(data)
         });
     },
+
+    // Time Settings
+    async getUsersWithTimeSettings(params = {}) {
+        const queryParams = new URLSearchParams();
+        if (params.department) queryParams.append('department', params.department);
+        
+        const url = `${this.baseUrl}/time-settings/users${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+        return this.request(url);
+    },
+
+    async batchUpdateTimeSettings(settings) {
+        return this.request(`${this.baseUrl}/time-settings/batch`, {
+            method: 'POST',
+            body: JSON.stringify({ settings })
+        });
+    },
+
+    async deleteTimeSetting(userId) {
+        return this.request(`${this.baseUrl}/time-settings/${userId}`, {
+            method: 'DELETE'
+        });
+    },
     
     // Export
     async exportCsv() {

@@ -5,6 +5,7 @@ pub mod users;
 pub mod checkins;
 pub mod stats;
 pub mod admin_users;
+pub mod time_settings;
 
 use actix_web::web;
 
@@ -53,6 +54,12 @@ pub fn admin_routes() -> actix_web::Scope {
                         .route("/{id}", web::put().to(admin_users::update_admin_user))
                         .route("/{id}", web::delete().to(admin_users::delete_admin_user))
                         .route("/{id}/password", web::put().to(admin_users::reset_admin_password))
+                )
+                .service(
+                    web::scope("/time-settings")
+                        .route("/users", web::get().to(time_settings::get_users_with_time_settings))
+                        .route("/batch", web::post().to(time_settings::batch_update_time_settings))
+                        .route("/{user_id}", web::delete().to(time_settings::delete_time_setting))
                 )
         )
 }

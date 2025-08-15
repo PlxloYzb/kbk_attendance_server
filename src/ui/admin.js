@@ -77,6 +77,9 @@ const admin = {
             case 'admin-users':
                 await this.loadAdminUsers();
                 break;
+            case 'time-settings':
+                await this.loadTimeSettings();
+                break;
             case 'export':
                 this.setupExport();
                 break;
@@ -1613,6 +1616,327 @@ const admin = {
             }
         } catch (error) {
             alert('Error resetting password: ' + error.message);
+        }
+    },
+
+    // Time Settings Management
+    async loadTimeSettings() {
+        const loadBtn = document.getElementById('load-time-settings');
+        const saveBtn = document.getElementById('save-time-settings');
+        const deptSelect = document.getElementById('time-settings-department');
+        
+        loadBtn.onclick = () => this.loadUsersWithTimeSettings();
+        saveBtn.onclick = () => this.saveTimeSettings();
+        
+        // Auto-load all users initially
+        await this.loadUsersWithTimeSettings();
+    },
+
+    async loadUsersWithTimeSettings() {
+        const content = document.getElementById('time-settings-content');
+        const deptSelect = document.getElementById('time-settings-department');
+        const saveBtn = document.getElementById('save-time-settings');
+        
+        content.innerHTML = '<div class="loading">Loading users...</div>';
+        saveBtn.disabled = true;
+        
+        try {
+            const params = {};
+            if (deptSelect.value) {
+                params.department = deptSelect.value;
+            }
+            
+            const response = await api.getUsersWithTimeSettings(params);
+            if (response.success) {
+                this.displayUsersWithTimeSettings(response.data);
+                saveBtn.disabled = false;
+            } else {
+                content.innerHTML = '<p class="error">Failed to load users</p>';
+            }
+        } catch (error) {
+            content.innerHTML = '<p class="error">Error loading users</p>';
+        }
+    },
+
+    displayUsersWithTimeSettings(users) {
+        const content = document.getElementById('time-settings-content');
+        
+        if (users.length === 0) {
+            content.innerHTML = '<p>No users found for the selected department</p>';
+            return;
+        }
+
+        let html = `
+            <div class="time-settings-table-container">
+                <table class="data-table time-settings-table">
+                    <thead>
+                        <tr>
+                            <th>
+                                <input type="checkbox" id="select-all-users" title="Select All">
+                            </th>
+                            <th>User Name</th>
+                            <th>User ID</th>
+                            <th>Department</th>
+                            <th>On Duty Time</th>
+                            <th>Off Duty Time</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+
+        users.forEach(user => {
+            const onDutyTime = user.on_duty_time || '09:00:00';
+            const offDutyTime = user.off_duty_time || '18:00:00';
+            const hasCustomSettings = user.on_duty_time !== null;
+            
+            html += `
+                <tr data-user-id="${user.user_id}">
+                    <td>
+                        <input type="checkbox" class="user-checkbox" value="${user.user_id}">
+                    </td>
+                    <td>${user.user_name || user.user_id}</td>
+                    <td>${user.user_id}</td>
+                    <td>${user.department} - ${user.department_name || 'N/A'}</td>
+                    <td>
+                        <input type="time" class="time-input on-duty-time" 
+                               value="${onDutyTime.substring(0, 5)}" 
+                               data-user-id="${user.user_id}">
+                    </td>
+                    <td>
+                        <input type="time" class="time-input off-duty-time" 
+                               value="${offDutyTime.substring(0, 5)}" 
+                               data-user-id="${user.user_id}">
+                    </td>
+                    <td>
+                        <span class="status-badge ${hasCustomSettings ? 'custom' : 'default'}">
+                            ${hasCustomSettings ? 'Custom' : 'Default'}
+                        </span>
+                    </td>
+                    <td>
+                        <button class="btn btn-small btn-secondary apply-batch-btn" 
+                                data-user-id="${user.user_id}">
+                            Apply to Selected
+                        </button>
+                        ${hasCustomSettings ? `
+                        <button class="btn btn-small btn-danger reset-btn" 
+                                data-user-id="${user.user_id}">
+                            Reset
+                        </button>
+                        ` : ''}
+                    </td>
+                </tr>
+            `;
+        });
+
+        html += `
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="time-settings-actions">
+                <div class="batch-actions">
+                    <h4>Batch Actions:</h4>
+                    <div class="batch-controls">
+                        <div class="time-group">
+                            <label>On Duty:</label>
+                            <input type="time" id="batch-on-duty" value="09:00">
+                        </div>
+                        <div class="time-group">
+                            <label>Off Duty:</label>
+                            <input type="time" id="batch-off-duty" value="18:00">
+                        </div>
+                        <button id="apply-batch-times" class="btn btn-secondary">
+                            Apply to Selected Users
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        content.innerHTML = html;
+        
+        // Add event listeners
+        this.setupTimeSettingsEvents();
+    },
+
+    setupTimeSettingsEvents() {
+        // Select all checkbox
+        const selectAllCheckbox = document.getElementById('select-all-users');
+        if (selectAllCheckbox) {
+            selectAllCheckbox.addEventListener('change', () => {
+                const userCheckboxes = document.querySelectorAll('.user-checkbox');
+                userCheckboxes.forEach(cb => cb.checked = selectAllCheckbox.checked);
+            });
+        }
+
+        // Individual apply to selected buttons
+        document.querySelectorAll('.apply-batch-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const userId = btn.getAttribute('data-user-id');
+                this.applyTimeToSelected(userId);
+            });
+        });
+
+        // Reset buttons
+        document.querySelectorAll('.reset-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const userId = btn.getAttribute('data-user-id');
+                this.resetUserTimeSetting(userId);
+            });
+        });
+
+        // Batch apply button
+        const batchApplyBtn = document.getElementById('apply-batch-times');
+        if (batchApplyBtn) {
+            batchApplyBtn.addEventListener('click', () => {
+                this.applyBatchTimes();
+            });
+        }
+
+        // Time input change tracking
+        document.querySelectorAll('.time-input').forEach(input => {
+            input.addEventListener('change', () => {
+                this.markAsChanged();
+            });
+        });
+    },
+
+    applyTimeToSelected(sourceUserId) {
+        const sourceRow = document.querySelector(`tr[data-user-id="${sourceUserId}"]`);
+        const onDutyTime = sourceRow.querySelector('.on-duty-time').value;
+        const offDutyTime = sourceRow.querySelector('.off-duty-time').value;
+        
+        const selectedCheckboxes = document.querySelectorAll('.user-checkbox:checked');
+        
+        if (selectedCheckboxes.length === 0) {
+            alert('Please select users to apply the time settings to.');
+            return;
+        }
+
+        selectedCheckboxes.forEach(checkbox => {
+            const userId = checkbox.value;
+            const targetRow = document.querySelector(`tr[data-user-id="${userId}"]`);
+            if (targetRow) {
+                targetRow.querySelector('.on-duty-time').value = onDutyTime;
+                targetRow.querySelector('.off-duty-time').value = offDutyTime;
+            }
+        });
+
+        this.markAsChanged();
+        alert(`Applied time settings to ${selectedCheckboxes.length} users.`);
+    },
+
+    applyBatchTimes() {
+        const batchOnDuty = document.getElementById('batch-on-duty').value;
+        const batchOffDuty = document.getElementById('batch-off-duty').value;
+        const selectedCheckboxes = document.querySelectorAll('.user-checkbox:checked');
+        
+        if (selectedCheckboxes.length === 0) {
+            alert('Please select users to apply the batch time settings to.');
+            return;
+        }
+
+        selectedCheckboxes.forEach(checkbox => {
+            const userId = checkbox.value;
+            const targetRow = document.querySelector(`tr[data-user-id="${userId}"]`);
+            if (targetRow) {
+                targetRow.querySelector('.on-duty-time').value = batchOnDuty;
+                targetRow.querySelector('.off-duty-time').value = batchOffDuty;
+            }
+        });
+
+        this.markAsChanged();
+        alert(`Applied batch time settings to ${selectedCheckboxes.length} users.`);
+    },
+
+    async resetUserTimeSetting(userId) {
+        if (!confirm(`Reset time settings for user ${userId} to default (9:00-18:00)?`)) {
+            return;
+        }
+
+        try {
+            const response = await api.deleteTimeSetting(userId);
+            if (response.success) {
+                // Update UI to show default times
+                const row = document.querySelector(`tr[data-user-id="${userId}"]`);
+                if (row) {
+                    row.querySelector('.on-duty-time').value = '09:00';
+                    row.querySelector('.off-duty-time').value = '18:00';
+                    const statusBadge = row.querySelector('.status-badge');
+                    statusBadge.textContent = 'Default';
+                    statusBadge.className = 'status-badge default';
+                    
+                    // Remove reset button
+                    const resetBtn = row.querySelector('.reset-btn');
+                    if (resetBtn) resetBtn.remove();
+                }
+                alert('Time setting reset to default successfully.');
+            } else {
+                alert('Failed to reset time setting: ' + response.message);
+            }
+        } catch (error) {
+            alert('Error resetting time setting: ' + error.message);
+        }
+    },
+
+    markAsChanged() {
+        const saveBtn = document.getElementById('save-time-settings');
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Save Changes *';
+            saveBtn.classList.add('btn-warning');
+        }
+    },
+
+    async saveTimeSettings() {
+        const saveBtn = document.getElementById('save-time-settings');
+        const originalText = saveBtn.textContent;
+        
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving...';
+        
+        try {
+            const settings = [];
+            const timeInputs = document.querySelectorAll('.time-input');
+            const processedUsers = new Set();
+            
+            timeInputs.forEach(input => {
+                const userId = input.getAttribute('data-user-id');
+                if (processedUsers.has(userId)) return;
+                
+                const row = document.querySelector(`tr[data-user-id="${userId}"]`);
+                const onDutyTime = row.querySelector('.on-duty-time').value + ':00';
+                const offDutyTime = row.querySelector('.off-duty-time').value + ':00';
+                
+                settings.push({
+                    user_id: userId,
+                    on_duty_time: onDutyTime,
+                    off_duty_time: offDutyTime
+                });
+                
+                processedUsers.add(userId);
+            });
+            
+            const response = await api.batchUpdateTimeSettings(settings);
+            if (response.success) {
+                alert(`Successfully saved time settings for ${settings.length} users.`);
+                saveBtn.textContent = 'Save Changes';
+                saveBtn.classList.remove('btn-warning');
+                
+                // Reload to refresh status badges
+                await this.loadUsersWithTimeSettings();
+            } else {
+                alert('Failed to save time settings: ' + response.message);
+            }
+        } catch (error) {
+            alert('Error saving time settings: ' + error.message);
+        } finally {
+            saveBtn.disabled = false;
+            if (saveBtn.textContent === 'Saving...') {
+                saveBtn.textContent = originalText;
+            }
         }
     }
 };

@@ -25,6 +25,7 @@
             <button class="nav-btn" data-section="users">Users</button>
             <button class="nav-btn" data-section="checkins">Checkins</button>
             <button class="nav-btn" data-section="admin-users">Admin Users</button>
+            <button class="nav-btn" data-section="time-settings">Time Settings</button>
             <button class="nav-btn" data-section="export">Export Data</button>
         </nav>
         
@@ -77,6 +78,43 @@
                 <h2>Admin Users Management</h2>
                 <button id="add-admin-user-btn" class="btn btn-primary">Add Admin User</button>
                 <div id="admin-users-table"></div>
+            </section>
+
+            <!-- Time Settings Section -->
+            <section id="time-settings-section" class="content-section">
+                <h2>Time Settings Management</h2>
+                <p>Configure custom duty times for users. Set when each user should arrive and leave to customize late/early leave detection.</p>
+                
+                <div class="time-settings-filters">
+                    <div class="filter-row">
+                        <div class="filter-group">
+                            <label for="time-settings-department">Department:</label>
+                            <select id="time-settings-department">
+                                <option value="">All Departments</option>
+                                <option value="1">1 - Office</option>
+                                <option value="2">2 - Mining</option>
+                                <option value="3">3 - CA</option>
+                                <option value="4">4 - HR</option>
+                                <option value="5">5 - Warehouse</option>
+                                <option value="6">6 - Lab</option>
+                                <option value="7">7 - Logistics</option>
+                                <option value="8">8 - Training</option>
+                                <option value="9">9 - Technic</option>
+                                <option value="10">10 - Hydro</option>
+                                <option value="99">99 - Standby</option>
+                            </select>
+                        </div>
+                        
+                        <div class="filter-group">
+                            <button id="load-time-settings" class="btn btn-primary">Load Users</button>
+                            <button id="save-time-settings" class="btn btn-success" disabled>Save Changes</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="time-settings-content">
+                    <p class="info-text">Select a department above to load users and configure their duty times.</p>
+                </div>
             </section>
             
             <!-- Export Section -->
