@@ -102,6 +102,14 @@ const admin = {
             <div class="stats-filters">
                 <div class="filter-row">
                     <div class="filter-group">
+                        <label for="stats-view-type">View:</label>
+                        <select id="stats-view-type">
+                            <option value="month" selected>Monthly</option>
+                            <option value="year">Yearly</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-group">
                         <label for="stats-month">Month:</label>
                         <select id="stats-month">
                             <option value="1" ${currentMonth === 1 ? 'selected' : ''}>January</option>
@@ -168,21 +176,45 @@ const admin = {
         document.getElementById('apply-stats-filter').addEventListener('click', () => this.loadFilteredStats());
         document.getElementById('reset-stats-filter').addEventListener('click', () => this.resetStatsFilters());
         
+        // Add view type change listener
+        document.getElementById('stats-view-type').addEventListener('change', () => {
+            this.handleViewTypeChange();
+            this.loadFilteredStats();
+        });
+        
         // Add real-time search
         let searchTimeout;
         document.getElementById('stats-user-search').addEventListener('input', () => {
             clearTimeout(searchTimeout);
             searchTimeout = setTimeout(() => this.loadFilteredStats(), 500);
         });
+        
+        // Initialize view type state
+        this.handleViewTypeChange();
+    },
+
+    handleViewTypeChange() {
+        const viewType = document.getElementById('stats-view-type').value;
+        const monthSelect = document.getElementById('stats-month');
+        
+        if (viewType === 'year') {
+            monthSelect.disabled = true;
+            monthSelect.style.opacity = '0.5';
+        } else {
+            monthSelect.disabled = false;
+            monthSelect.style.opacity = '1';
+        }
     },
 
     resetStatsFilters() {
         const now = new Date();
+        document.getElementById('stats-view-type').value = 'month';
         document.getElementById('stats-month').value = now.getMonth() + 1;
         document.getElementById('stats-year').value = now.getFullYear();
         document.getElementById('stats-user-search').value = '';
         const deptSelect = document.getElementById('stats-department');
         if (deptSelect) deptSelect.value = '';
+        this.handleViewTypeChange();
         this.loadFilteredStats();
     },
 
@@ -191,11 +223,17 @@ const admin = {
         resultsContainer.innerHTML = '<div class="loading">Loading statistics...</div>';
         
         try {
+            const viewType = document.getElementById('stats-view-type').value;
             const params = {
-                month: parseInt(document.getElementById('stats-month').value),
+                view_type: viewType,
                 year: parseInt(document.getElementById('stats-year').value),
                 user_name: document.getElementById('stats-user-search').value.trim() || undefined,
             };
+            
+            // Only include month for monthly view
+            if (viewType === 'month') {
+                params.month = parseInt(document.getElementById('stats-month').value);
+            }
             
             const deptSelect = document.getElementById('stats-department');
             if (deptSelect && deptSelect.value) {
@@ -290,10 +328,17 @@ const admin = {
 
         const monthNames = ['', 'January', 'February', 'March', 'April', 'May', 'June',
                           'July', 'August', 'September', 'October', 'November', 'December'];
-        const selectedMonthName = monthNames[params.month];
+        
+        let periodTitle;
+        if (params.view_type === 'year') {
+            periodTitle = `Statistics for Year ${params.year}`;
+        } else {
+            const selectedMonthName = monthNames[params.month];
+            periodTitle = `Statistics for ${selectedMonthName} ${params.year}`;
+        }
 
         let html = `<div class="stats-header">
-                        <h3>Statistics for ${selectedMonthName} ${params.year}</h3>
+                        <h3>${periodTitle}</h3>
                         ${params.user_name ? `<p>Filtered by user: "${params.user_name}"</p>` : ''}
                         ${params.department ? `<p>Department: ${params.department}</p>` : ''}
                     </div>`;
@@ -354,8 +399,9 @@ const admin = {
                             <button class="btn btn-small btn-primary detail-btn" 
                                     data-user-id="${user.user_id}" 
                                     data-user-name="${user.user_name || user.user_id}"
-                                    data-month="${params.month}"
-                                    data-year="${params.year}">
+                                    data-month="${params.month || 0}"
+                                    data-year="${params.year}"
+                                    data-view-type="${params.view_type}">
                                 Details
                             </button>
                         </td>
@@ -432,8 +478,13 @@ const admin = {
                 const userName = btn.getAttribute('data-user-name');
                 const month = parseInt(btn.getAttribute('data-month'));
                 const year = parseInt(btn.getAttribute('data-year'));
+                const viewType = btn.getAttribute('data-view-type');
                 
-                await this.showUserDetail(userId, userName, month, year);
+                if (viewType === 'year') {
+                    await this.showUserYearDetail(userId, userName, year);
+                } else {
+                    await this.showUserDetail(userId, userName, month, year);
+                }
             });
         });
     },
@@ -528,12 +579,141 @@ const admin = {
             document.getElementById('modal').style.display = 'block';
             
             // Add close functionality
-            document.querySelector('.close').onclick = () => {
-                document.getElementById('modal').style.display = 'none';
-            };
+            const closeBtn = document.querySelector('.modal .close');
+            if (closeBtn) {
+                closeBtn.onclick = () => {
+                    document.getElementById('modal').style.display = 'none';
+                };
+            }
             
         } catch (error) {
             alert('Error loading user details: ' + error.message);
+        }
+    },
+
+    async showUserYearDetail(userId, userName, year) {
+        try {
+            // Get data for all 12 months
+            const monthlyData = [];
+            const monthNames = ['', 'January', 'February', 'March', 'April', 'May', 'June',
+                              'July', 'August', 'September', 'October', 'November', 'December'];
+            
+            for (let month = 1; month <= 12; month++) {
+                try {
+                    const response = await api.getUserDetail(userId, month, year);
+                    if (response.success) {
+                        monthlyData.push({
+                            month: month,
+                            monthName: monthNames[month],
+                            data: response.data
+                        });
+                    }
+                } catch (e) {
+                    // Continue if one month fails
+                    console.warn(`Failed to load data for ${monthNames[month]} ${year}:`, e);
+                }
+            }
+            
+            // Calculate yearly totals
+            let totalYearDays = 0;
+            let totalYearHours = 0;
+            
+            monthlyData.forEach(monthData => {
+                totalYearDays += monthData.data.total_days;
+                totalYearHours += monthData.data.total_hours;
+            });
+            
+            // Build monthly breakdown table
+            let monthlyHtml = '';
+            if (monthlyData.length === 0) {
+                monthlyHtml = '<p>No attendance records found for this year.</p>';
+            } else {
+                monthlyHtml = `
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Month</th>
+                                <th>Days Worked</th>
+                                <th>Total Hours</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+                
+                monthlyData.forEach(monthData => {
+                    monthlyHtml += `
+                        <tr>
+                            <td>${monthData.monthName}</td>
+                            <td>${monthData.data.total_days}</td>
+                            <td>${monthData.data.total_hours.toFixed(2)}</td>
+                            <td>
+                                <button class="btn btn-small btn-secondary month-detail-btn" 
+                                        data-user-id="${userId}"
+                                        data-user-name="${userName}"
+                                        data-month="${monthData.month}"
+                                        data-year="${year}">
+                                    View Details
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+                
+                monthlyHtml += '</tbody></table>';
+            }
+            
+            const modalContent = `
+                <div class="modal-header">
+                    <h3>Annual Report - ${userName}</h3>
+                    <span class="close">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <div class="detail-summary">
+                        <h4>${year} Annual Summary</h4>
+                        <div class="summary-stats">
+                            <div class="stat-item">
+                                <span class="stat-label">Total Days:</span>
+                                <span class="stat-value">${totalYearDays}</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Total Hours:</span>
+                                <span class="stat-value">${totalYearHours.toFixed(2)}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="detail-records">
+                        <h4>Monthly Breakdown</h4>
+                        ${monthlyHtml}
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('modal-body').innerHTML = modalContent;
+            document.getElementById('modal').style.display = 'block';
+            
+            // Add close functionality
+            const closeBtn = document.querySelector('.modal .close');
+            if (closeBtn) {
+                closeBtn.onclick = () => {
+                    document.getElementById('modal').style.display = 'none';
+                };
+            }
+            
+            // Add month detail button functionality
+            document.querySelectorAll('.month-detail-btn').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const monthUserId = btn.getAttribute('data-user-id');
+                    const monthUserName = btn.getAttribute('data-user-name');
+                    const month = parseInt(btn.getAttribute('data-month'));
+                    const year = parseInt(btn.getAttribute('data-year'));
+                    
+                    await this.showUserDetail(monthUserId, monthUserName, month, year);
+                });
+            });
+            
+        } catch (error) {
+            alert('Error loading yearly details: ' + error.message);
         }
     },
     

@@ -252,16 +252,27 @@ pub async fn get_filtered_department_stats(
     let current_month = now.month();
 
     let target_year = query.year.unwrap_or(current_year);
-    let target_month = query.month.unwrap_or(current_month);
+    let view_type = query.view_type.as_deref().unwrap_or("month");
 
-    // Calculate date range for the selected month
-    let start_date = chrono::NaiveDate::from_ymd_opt(target_year, target_month, 1)
-        .unwrap_or_else(|| chrono::NaiveDate::from_ymd_opt(current_year, current_month, 1).unwrap());
-    
-    let end_date = if target_month == 12 {
-        chrono::NaiveDate::from_ymd_opt(target_year + 1, 1, 1).unwrap()
+    // Calculate date range based on view type
+    let (start_date, end_date) = if view_type == "year" {
+        // Whole year view
+        let start_date = chrono::NaiveDate::from_ymd_opt(target_year, 1, 1)
+            .unwrap_or_else(|| chrono::NaiveDate::from_ymd_opt(current_year, 1, 1).unwrap());
+        let end_date = chrono::NaiveDate::from_ymd_opt(target_year + 1, 1, 1).unwrap();
+        (start_date, end_date)
     } else {
-        chrono::NaiveDate::from_ymd_opt(target_year, target_month + 1, 1).unwrap()
+        // Monthly view
+        let target_month = query.month.unwrap_or(current_month);
+        let start_date = chrono::NaiveDate::from_ymd_opt(target_year, target_month, 1)
+            .unwrap_or_else(|| chrono::NaiveDate::from_ymd_opt(current_year, current_month, 1).unwrap());
+        
+        let end_date = if target_month == 12 {
+            chrono::NaiveDate::from_ymd_opt(target_year + 1, 1, 1).unwrap()
+        } else {
+            chrono::NaiveDate::from_ymd_opt(target_year, target_month + 1, 1).unwrap()
+        };
+        (start_date, end_date)
     };
 
     // Build department filter conditions

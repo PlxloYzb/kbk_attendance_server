@@ -148,6 +148,7 @@ pub struct FilteredDepartmentStatsRequest {
     pub year: Option<i32>,
     pub user_name: Option<String>,
     pub department: Option<i32>,
+    pub view_type: Option<String>, // "month" or "year"
 }
 
 #[derive(Debug, Serialize, Deserialize)]

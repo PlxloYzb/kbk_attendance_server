@@ -167,6 +167,7 @@ const api = {
         if (params.year) queryParams.append('year', params.year);
         if (params.user_name) queryParams.append('user_name', params.user_name);
         if (params.department) queryParams.append('department', params.department);
+        if (params.view_type) queryParams.append('view_type', params.view_type);
         
         const url = `${this.baseUrl}/stats/department/filtered${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
         return this.request(url);
