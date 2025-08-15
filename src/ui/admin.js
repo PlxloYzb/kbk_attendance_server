@@ -80,9 +80,7 @@ const admin = {
             case 'time-settings':
                 await this.loadTimeSettings();
                 break;
-            case 'sync-status':
-                await this.loadSyncStatus();
-                break;
+
             case 'export':
                 this.setupExport();
                 break;
@@ -558,9 +556,8 @@ const admin = {
             const modalContent = `
                 <div class="modal-header">
                     <h3>Attendance Details - ${userName}</h3>
-                    <span class="close">&times;</span>
                 </div>
-                <div class="modal-body">
+                <div class="modal-body-content">
                     <div class="detail-summary">
                         <h4>${monthNames[month]} ${year} Summary</h4>
                         <div class="summary-stats">
@@ -672,7 +669,6 @@ const admin = {
             const modalContent = `
                 <div class="modal-header">
                     <h3>Annual Report - ${userName}</h3>
-                    <span class="close">&times;</span>
                 </div>
                 <div class="modal-body">
                     <div class="detail-summary">
@@ -1718,10 +1714,6 @@ const admin = {
                         </span>
                     </td>
                     <td>
-                        <button class="btn btn-small btn-secondary apply-batch-btn" 
-                                data-user-id="${user.user_id}">
-                            Apply to Selected
-                        </button>
                         ${hasCustomSettings ? `
                         <button class="btn btn-small btn-danger reset-btn" 
                                 data-user-id="${user.user_id}">
@@ -1739,22 +1731,7 @@ const admin = {
             </div>
             
             <div class="time-settings-actions">
-                <div class="batch-actions">
-                    <h4>Batch Actions:</h4>
-                    <div class="batch-controls">
-                        <div class="time-group">
-                            <label>On Duty:</label>
-                            <input type="time" id="batch-on-duty" value="07:30">
-                        </div>
-                        <div class="time-group">
-                            <label>Off Duty:</label>
-                            <input type="time" id="batch-off-duty" value="17:00">
-                        </div>
-                        <button id="apply-batch-times" class="btn btn-secondary">
-                            Apply to Selected Users
-                        </button>
-                    </div>
-                </div>
+
             </div>
         `;
 
@@ -1774,14 +1751,6 @@ const admin = {
             });
         }
 
-        // Individual apply to selected buttons
-        document.querySelectorAll('.apply-batch-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const userId = btn.getAttribute('data-user-id');
-                this.applyTimeToSelected(userId);
-            });
-        });
-
         // Reset buttons
         document.querySelectorAll('.reset-btn').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -1789,14 +1758,6 @@ const admin = {
                 this.resetUserTimeSetting(userId);
             });
         });
-
-        // Batch apply button
-        const batchApplyBtn = document.getElementById('apply-batch-times');
-        if (batchApplyBtn) {
-            batchApplyBtn.addEventListener('click', () => {
-                this.applyBatchTimes();
-            });
-        }
 
         // Time input change tracking
         document.querySelectorAll('.time-input').forEach(input => {
@@ -1806,53 +1767,7 @@ const admin = {
         });
     },
 
-    applyTimeToSelected(sourceUserId) {
-        const sourceRow = document.querySelector(`tr[data-user-id="${sourceUserId}"]`);
-        const onDutyTime = sourceRow.querySelector('.on-duty-time').value;
-        const offDutyTime = sourceRow.querySelector('.off-duty-time').value;
-        
-        const selectedCheckboxes = document.querySelectorAll('.user-checkbox:checked');
-        
-        if (selectedCheckboxes.length === 0) {
-            alert('Please select users to apply the time settings to.');
-            return;
-        }
 
-        selectedCheckboxes.forEach(checkbox => {
-            const userId = checkbox.value;
-            const targetRow = document.querySelector(`tr[data-user-id="${userId}"]`);
-            if (targetRow) {
-                targetRow.querySelector('.on-duty-time').value = onDutyTime;
-                targetRow.querySelector('.off-duty-time').value = offDutyTime;
-            }
-        });
-
-        this.markAsChanged();
-        alert(`Applied time settings to ${selectedCheckboxes.length} users.`);
-    },
-
-    applyBatchTimes() {
-        const batchOnDuty = document.getElementById('batch-on-duty').value;
-        const batchOffDuty = document.getElementById('batch-off-duty').value;
-        const selectedCheckboxes = document.querySelectorAll('.user-checkbox:checked');
-        
-        if (selectedCheckboxes.length === 0) {
-            alert('Please select users to apply the batch time settings to.');
-            return;
-        }
-
-        selectedCheckboxes.forEach(checkbox => {
-            const userId = checkbox.value;
-            const targetRow = document.querySelector(`tr[data-user-id="${userId}"]`);
-            if (targetRow) {
-                targetRow.querySelector('.on-duty-time').value = batchOnDuty;
-                targetRow.querySelector('.off-duty-time').value = batchOffDuty;
-            }
-        });
-
-        this.markAsChanged();
-        alert(`Applied batch time settings to ${selectedCheckboxes.length} users.`);
-    },
 
     async resetUserTimeSetting(userId) {
         if (!confirm(`Reset time settings for user ${userId} to default (7:30-17:00)?`)) {
@@ -1943,134 +1858,5 @@ const admin = {
         }
     },
 
-    // Sync Status Management
-    async loadSyncStatus() {
-        await this.updateSyncStatus();
-        this.setupSyncEvents();
-    },
 
-    async updateSyncStatus() {
-        try {
-            const response = await api.getSyncStatus();
-            if (response.success) {
-                const status = response.data;
-                this.displaySyncStatus(status);
-            } else {
-                console.error('Failed to get sync status:', response.message);
-                this.displaySyncError('Failed to load sync status');
-            }
-        } catch (error) {
-            console.error('Error getting sync status:', error);
-            this.displaySyncError('Error loading sync status');
-        }
-    },
-
-    displaySyncStatus(status) {
-        document.getElementById('total-users-count').textContent = status.total_users;
-        document.getElementById('users-with-settings-count').textContent = status.users_with_time_settings;
-        
-        const indicator = document.getElementById('sync-status-indicator');
-        const missingInfo = document.getElementById('missing-users-info');
-        const missingCount = document.getElementById('missing-users-count');
-        
-        if (status.is_synced) {
-            indicator.textContent = 'Synced';
-            indicator.className = 'status-badge synced';
-            missingInfo.style.display = 'none';
-        } else {
-            indicator.textContent = 'Out of Sync';
-            indicator.className = 'status-badge out-of-sync';
-            missingInfo.style.display = 'block';
-            missingCount.textContent = status.missing_count;
-        }
-    },
-
-    displaySyncError(message) {
-        document.getElementById('total-users-count').textContent = 'Error';
-        document.getElementById('users-with-settings-count').textContent = 'Error';
-        document.getElementById('sync-status-indicator').textContent = message;
-        document.getElementById('sync-status-indicator').className = 'status-badge error';
-    },
-
-    setupSyncEvents() {
-        // Check status button
-        document.getElementById('check-sync-status-btn').addEventListener('click', () => {
-            this.updateSyncStatus();
-        });
-        
-        // Manual sync button
-        document.getElementById('manual-sync-btn').addEventListener('click', () => {
-            this.performManualSync();
-        });
-    },
-
-    async performManualSync() {
-        const syncBtn = document.getElementById('manual-sync-btn');
-        const resultDiv = document.getElementById('sync-result');
-        
-        try {
-            syncBtn.disabled = true;
-            syncBtn.textContent = '🔄 Syncing...';
-            resultDiv.style.display = 'none';
-            
-            const response = await api.manualSyncTimeSettings();
-            
-            if (response.success) {
-                const result = response.data;
-                this.displaySyncResult({
-                    success: true,
-                    message: result.message,
-                    count: result.synced_count,
-                    timestamp: result.timestamp
-                });
-                
-                // Refresh status after sync
-                await this.updateSyncStatus();
-            } else {
-                this.displaySyncResult({
-                    success: false,
-                    message: response.message || 'Sync failed'
-                });
-            }
-        } catch (error) {
-            this.displaySyncResult({
-                success: false,
-                message: 'Error during sync: ' + error.message
-            });
-        } finally {
-            syncBtn.disabled = false;
-            syncBtn.textContent = '🔄 Manual Sync';
-        }
-    },
-
-    displaySyncResult(result) {
-        const resultDiv = document.getElementById('sync-result');
-        
-        if (result.success) {
-            resultDiv.innerHTML = `
-                <div class="sync-success">
-                    <h4>✅ Sync Completed Successfully</h4>
-                    <p>${result.message}</p>
-                    ${result.count > 0 ? `<p><strong>${result.count}</strong> users were synced with default time settings.</p>` : ''}
-                    ${result.timestamp ? `<p><small>Completed at: ${new Date(result.timestamp).toLocaleString()}</small></p>` : ''}
-                </div>
-            `;
-        } else {
-            resultDiv.innerHTML = `
-                <div class="sync-error">
-                    <h4>❌ Sync Failed</h4>
-                    <p>${result.message}</p>
-                </div>
-            `;
-        }
-        
-        resultDiv.style.display = 'block';
-        
-        // Auto-hide after 10 seconds
-        setTimeout(() => {
-            if (resultDiv.style.display !== 'none') {
-                resultDiv.style.display = 'none';
-            }
-        }, 10000);
-    }
 };

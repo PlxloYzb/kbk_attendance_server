@@ -26,7 +26,7 @@
             <button class="nav-btn" data-section="checkins">Checkins</button>
             <button class="nav-btn" data-section="admin-users">Admin Users</button>
             <button class="nav-btn" data-section="time-settings">Time Settings</button>
-            <button class="nav-btn" data-section="sync-status">🔄 Sync Status</button>
+
             <button class="nav-btn" data-section="export">Export Data</button>
         </nav>
         
@@ -118,46 +118,7 @@
                 </div>
             </section>
 
-            <!-- Sync Status Section -->
-            <section id="sync-status-section" class="content-section">
-                <h2>Sync Status</h2>
-                <p>Monitor and manage data synchronization between user accounts and time settings.</p>
-                
-                <div class="sync-status-info">
-                    <div class="status-card">
-                        <h3>User Time Settings Sync</h3>
-                        <div id="sync-status-display">
-                            <div class="status-item">
-                                <span class="label">Total Users:</span>
-                                <span id="total-users-count">Loading...</span>
-                            </div>
-                            <div class="status-item">
-                                <span class="label">Users with Time Settings:</span>
-                                <span id="users-with-settings-count">Loading...</span>
-                            </div>
-                            <div class="status-item">
-                                <span class="label">Sync Status:</span>
-                                <span id="sync-status-indicator" class="status-badge">Loading...</span>
-                            </div>
-                            <div class="status-item" id="missing-users-info" style="display: none;">
-                                <span class="label">Missing Settings:</span>
-                                <span id="missing-users-count" class="badge badge-warning">0</span>
-                            </div>
-                        </div>
-                        
-                        <div class="sync-actions">
-                            <button id="check-sync-status-btn" class="btn btn-secondary">
-                                🔍 Check Status
-                            </button>
-                            <button id="manual-sync-btn" class="btn btn-primary">
-                                🔄 Manual Sync
-                            </button>
-                        </div>
-                        
-                        <div id="sync-result" class="sync-result" style="display: none;"></div>
-                    </div>
-                </div>
-            </section>
+
             
             <!-- Export Section -->
             <section id="export-section" class="content-section">
