@@ -4,6 +4,7 @@ use sqlx::PgPool;
 use crate::admin::auth::require_admin_auth;
 use crate::admin::models::{DepartmentStatsResponse, DepartmentStat, UserAttendanceStat};
 use crate::models::ApiResponse;
+use crate::timezone_config::TimezoneConfig;
 
 pub async fn get_department_stats(
     pool: web::Data<PgPool>,
@@ -188,12 +189,15 @@ pub async fn export_attendance_csv(
     let mut csv_content = String::from("User ID,Date,First Checkin,Last Checkout,Work Minutes,Work Hours,Sessions,Department,Department Name\n");
     
     for (user_id, date, first_checkin, last_checkout, work_minutes, sessions, department, department_name) in records {
+        // Use configured timezone for local display  
+        let timezone_config = TimezoneConfig::local();
+        
         let first_checkin_str = first_checkin
-            .map(|dt| dt.format("%Y-%m-%d %H:%M:%S").to_string())
+            .map(|dt| timezone_config.format_csv_datetime_with_tz(&dt))
             .unwrap_or_else(|| "".to_string());
         
         let last_checkout_str = last_checkout
-            .map(|dt| dt.format("%Y-%m-%d %H:%M:%S").to_string())
+            .map(|dt| timezone_config.format_csv_datetime_with_tz(&dt))
             .unwrap_or_else(|| "".to_string());
         
         let work_hours = work_minutes as f64 / 60.0;

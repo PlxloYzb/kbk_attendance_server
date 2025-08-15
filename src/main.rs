@@ -3,6 +3,7 @@ mod auth;
 mod db;
 mod handlers;
 mod models;
+mod timezone_config;
 
 use actix_cors::Cors;
 use actix_web::{middleware::Logger, web, App, HttpServer, HttpResponse};

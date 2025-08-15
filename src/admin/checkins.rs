@@ -66,7 +66,14 @@ pub async fn create_checkin(
         return HttpResponse::Forbidden().json(ApiResponse::<()>::error("Admin access required"));
     }
 
-    match sqlx::query_as::<_, Checkin>(
+    // Start a transaction to ensure atomicity
+    let mut tx = match pool.begin().await {
+        Ok(tx) => tx,
+        Err(_) => return HttpResponse::InternalServerError().json(ApiResponse::<()>::error("Transaction failed")),
+    };
+
+    // First, insert the checkin record
+    let checkin_result = sqlx::query_as::<_, Checkin>(
         r#"
         INSERT INTO checkins (user_id, action, created_at, latitude, longitude, is_synced)
         VALUES ($1, $2, $3, $4, $5, $6)
@@ -79,14 +86,135 @@ pub async fn create_checkin(
     .bind(checkin_req.latitude)
     .bind(checkin_req.longitude)
     .bind(checkin_req.is_synced)
-    .fetch_one(pool.as_ref())
-    .await
-    {
-        Ok(checkin) => HttpResponse::Created().json(ApiResponse::success(checkin, "Checkin created")),
-        Err(_) => HttpResponse::InternalServerError().json(ApiResponse::<()>::error("Failed to create checkin")),
+    .fetch_one(&mut *tx)
+    .await;
+
+    let checkin = match checkin_result {
+        Ok(checkin) => checkin,
+        Err(_) => {
+            let _ = tx.rollback().await;
+            return HttpResponse::InternalServerError().json(ApiResponse::<()>::error("Failed to create checkin"));
+        }
+    };
+
+    // Now process the checkin into attendance_sessions using the same logic as sync endpoint
+    let date = checkin_req.created_at.date_naive();
+    
+    // Get the current max session number for this user and date
+    let mut session_number = 
+        match sqlx::query_scalar::<_, i32>(
+            "SELECT COALESCE(MAX(session_number), 0) FROM attendance_sessions 
+             WHERE user_id = $1 AND date = $2"
+        )
+        .bind(&checkin_req.user_id)
+        .bind(date)
+        .fetch_one(&mut *tx)
+        .await {
+            Ok(num) => num,
+            Err(_) => 0,
+        };
+
+    // Process the checkin action
+    if checkin_req.action == "IN" {
+        // Check if there's an incomplete session (no checkout)
+        let has_incomplete_session = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM attendance_sessions 
+             WHERE user_id = $1 AND date = $2 AND checkout_time IS NULL)"
+        )
+        .bind(&checkin_req.user_id)
+        .bind(date)
+        .fetch_one(&mut *tx)
+        .await
+        .unwrap_or(false);
+
+        if !has_incomplete_session {
+            // Start new session
+            session_number += 1;
+            let result = sqlx::query(
+                "INSERT INTO attendance_sessions 
+                 (user_id, date, session_number, checkin_time, checkin_latitude, checkin_longitude) 
+                 VALUES ($1, $2, $3, $4, $5, $6)
+                 ON CONFLICT (user_id, date, session_number) 
+                 DO UPDATE SET 
+                    checkin_time = EXCLUDED.checkin_time,
+                    checkin_latitude = EXCLUDED.checkin_latitude,
+                    checkin_longitude = EXCLUDED.checkin_longitude"
+            )
+            .bind(&checkin_req.user_id)
+            .bind(date)
+            .bind(session_number)
+            .bind(checkin_req.created_at)
+            .bind(checkin_req.latitude)
+            .bind(checkin_req.longitude)
+            .execute(&mut *tx)
+            .await;
+
+            if result.is_err() {
+                let _ = tx.rollback().await;
+                return HttpResponse::InternalServerError().json(ApiResponse::<()>::error("Failed to create session"));
+            }
+        }
+    } else if checkin_req.action == "OUT" {
+        // Try to close an existing incomplete session
+        let update_result = sqlx::query(
+            "UPDATE attendance_sessions 
+             SET checkout_time = $1, checkout_latitude = $2, checkout_longitude = $3
+             WHERE user_id = $4 AND date = $5 AND checkout_time IS NULL
+             ORDER BY session_number DESC
+             LIMIT 1"
+        )
+        .bind(checkin_req.created_at)
+        .bind(checkin_req.latitude)
+        .bind(checkin_req.longitude)
+        .bind(&checkin_req.user_id)
+        .bind(date)
+        .execute(&mut *tx)
+        .await;
+
+        match update_result {
+            Ok(result) if result.rows_affected() == 0 => {
+                // No incomplete session found, create a checkout-only session
+                session_number += 1;
+                let result = sqlx::query(
+                    "INSERT INTO attendance_sessions 
+                     (user_id, date, session_number, checkin_time, checkout_time, checkout_latitude, checkout_longitude) 
+                     VALUES ($1, $2, $3, $4, $5, $6, $7)
+                     ON CONFLICT (user_id, date, session_number) DO NOTHING"
+                )
+                .bind(&checkin_req.user_id)
+                .bind(date)
+                .bind(session_number)
+                .bind(checkin_req.created_at) // Use checkout time as checkin for incomplete session
+                .bind(checkin_req.created_at)
+                .bind(checkin_req.latitude)
+                .bind(checkin_req.longitude)
+                .execute(&mut *tx)
+                .await;
+
+                if result.is_err() {
+                    let _ = tx.rollback().await;
+                    return HttpResponse::InternalServerError().json(ApiResponse::<()>::error("Failed to create incomplete session"));
+                }
+            }
+            Err(_) => {
+                let _ = tx.rollback().await;
+                return HttpResponse::InternalServerError().json(ApiResponse::<()>::error("Failed to update session"));
+            }
+            _ => {} // Successfully updated existing session
+        }
+    }
+
+    // Commit the transaction - attendance_summary will be automatically updated by triggers
+    match tx.commit().await {
+        Ok(_) => HttpResponse::Created().json(ApiResponse::success(checkin, "Checkin created and processed into sessions")),
+        Err(_) => HttpResponse::InternalServerError().json(ApiResponse::<()>::error("Failed to commit transaction")),
     }
 }
 
+// Note: Updating checkins is complex as it may require reprocessing attendance sessions.
+// For now, this function only updates the checkin record itself.
+// If you need to update attendance data, consider deleting and recreating the checkin,
+// or manually run the populate_sessions_from_checkins.sql script.
 pub async fn update_checkin(
     pool: web::Data<PgPool>,
     req: HttpRequest,
