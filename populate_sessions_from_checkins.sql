@@ -31,7 +31,10 @@ WITH checkin_pairs AS (
             WHERE co.user_id = ci.user_id 
                 AND co.action = 'OUT' 
                 AND co.created_at > ci.created_at
-                AND co.created_at::date = ci.created_at::date
+                -- FIXED: Allow checkouts on the next day for midnight crossings
+                AND co.created_at::date IN (ci.created_at::date, ci.created_at::date + INTERVAL '1 day')
+                -- Limit to reasonable session duration (16 hours max)
+                AND co.created_at < ci.created_at + INTERVAL '16 hours'
             ORDER BY co.created_at 
             LIMIT 1
         ) as checkout_time,
@@ -41,7 +44,8 @@ WITH checkin_pairs AS (
             WHERE co.user_id = ci.user_id 
                 AND co.action = 'OUT' 
                 AND co.created_at > ci.created_at
-                AND co.created_at::date = ci.created_at::date
+                AND co.created_at::date IN (ci.created_at::date, ci.created_at::date + INTERVAL '1 day')
+                AND co.created_at < ci.created_at + INTERVAL '16 hours'
             ORDER BY co.created_at 
             LIMIT 1
         ) as checkout_lat,
@@ -51,7 +55,8 @@ WITH checkin_pairs AS (
             WHERE co.user_id = ci.user_id 
                 AND co.action = 'OUT' 
                 AND co.created_at > ci.created_at
-                AND co.created_at::date = ci.created_at::date
+                AND co.created_at::date IN (ci.created_at::date, ci.created_at::date + INTERVAL '1 day')
+                AND co.created_at < ci.created_at + INTERVAL '16 hours'
             ORDER BY co.created_at 
             LIMIT 1
         ) as checkout_lon

@@ -155,12 +155,15 @@ pub async fn create_checkin(
             }
         }
     } else if checkin_req.action == "OUT" {
-        // Try to close an existing incomplete session
+        // Try to close an existing incomplete session (including previous day for midnight crossings)
         let update_result = sqlx::query(
             "UPDATE attendance_sessions 
              SET checkout_time = $1, checkout_latitude = $2, checkout_longitude = $3
-             WHERE user_id = $4 AND date = $5 AND checkout_time IS NULL
-             ORDER BY session_number DESC
+             WHERE user_id = $4 
+                AND date IN ($5, $5 - INTERVAL '1 day')
+                AND checkout_time IS NULL
+                AND checkin_time < $1 + INTERVAL '16 hours'  -- Max session duration
+             ORDER BY checkin_time DESC
              LIMIT 1"
         )
         .bind(checkin_req.created_at)

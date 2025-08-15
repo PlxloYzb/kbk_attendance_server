@@ -135,6 +135,18 @@ pub async fn sync_checkins(
                 Err(_) => 0,
             };
 
+        // Check for incomplete session from previous day (midnight crossing fix)
+        let _has_previous_incomplete = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM attendance_sessions 
+             WHERE user_id = $1 AND date = $2 - INTERVAL '1 day' AND checkout_time IS NULL
+               AND checkin_time > $2 - INTERVAL '1 day' + INTERVAL '16 hours')"
+        )
+        .bind(&req.user_id)
+        .bind(date)
+        .fetch_one(&mut *tx)
+        .await
+        .unwrap_or(false);
+
         for checkin in sorted_checkins {
             if checkin.action == "IN" {
                 if open_session.is_none() {
@@ -189,27 +201,45 @@ pub async fn sync_checkins(
                     }
                     open_session = None;
                 } else {
-                    // OUT without IN - create incomplete session
-                    session_number += 1;
-                    let result = sqlx::query(
-                        "INSERT INTO attendance_sessions 
-                         (user_id, date, session_number, checkin_time, checkout_time, checkout_latitude, checkout_longitude) 
-                         VALUES ($1, $2, $3, $4, $5, $6, $7)
-                         ON CONFLICT (user_id, date, session_number) DO NOTHING"
+                    // OUT without IN - check for incomplete session from previous day first (midnight crossing)
+                    let prev_day_updated = sqlx::query(
+                        "UPDATE attendance_sessions 
+                         SET checkout_time = $1, checkout_latitude = $2, checkout_longitude = $3
+                         WHERE user_id = $4 AND date = $5 - INTERVAL '1 day' AND checkout_time IS NULL
+                           AND checkin_time < $1 AND checkin_time > $1 - INTERVAL '16 hours'
+                         ORDER BY checkin_time DESC LIMIT 1"
                     )
-                    .bind(&req.user_id)
-                    .bind(date)
-                    .bind(session_number)
-                    .bind(checkin.created_at) // Use checkout time as checkin for incomplete session
                     .bind(checkin.created_at)
                     .bind(checkin.latitude)
                     .bind(checkin.longitude)
+                    .bind(&req.user_id)
+                    .bind(date)
                     .execute(&mut *tx)
                     .await;
 
-                    if result.is_err() {
-                        let _ = tx.rollback().await;
-                        return HttpResponse::InternalServerError().json(ApiResponse::<()>::error("Failed to create incomplete session"));
+                    // If no previous day session was updated, create checkout-only session
+                    if prev_day_updated.map(|r| r.rows_affected()).unwrap_or(0) == 0 {
+                        session_number += 1;
+                        let result = sqlx::query(
+                            "INSERT INTO attendance_sessions 
+                             (user_id, date, session_number, checkin_time, checkout_time, checkout_latitude, checkout_longitude) 
+                             VALUES ($1, $2, $3, $4, $5, $6, $7)
+                             ON CONFLICT (user_id, date, session_number) DO NOTHING"
+                        )
+                        .bind(&req.user_id)
+                        .bind(date)
+                        .bind(session_number)
+                        .bind(checkin.created_at) // Use checkout time as checkin for incomplete session
+                        .bind(checkin.created_at)
+                        .bind(checkin.latitude)
+                        .bind(checkin.longitude)
+                        .execute(&mut *tx)
+                        .await;
+
+                        if result.is_err() {
+                            let _ = tx.rollback().await;
+                            return HttpResponse::InternalServerError().json(ApiResponse::<()>::error("Failed to create incomplete session"));
+                        }
                     }
                 }
             }
