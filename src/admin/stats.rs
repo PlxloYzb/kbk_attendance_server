@@ -452,12 +452,12 @@ pub async fn get_user_detail(
             ats.total_sessions,
             CASE 
                 WHEN ats.first_checkin_time IS NOT NULL AND 
-                     ats.first_checkin_time::time > COALESCE(uts.on_duty_time, '09:00:00'::time) THEN true
+                     ats.first_checkin_time::time > COALESCE(uts.on_duty_time, '07:30:00'::time) THEN true
                 ELSE false
             END as is_late,
             CASE 
                 WHEN ats.last_checkout_time IS NOT NULL AND 
-                     ats.last_checkout_time::time < COALESCE(uts.off_duty_time, '18:00:00'::time) THEN true
+                     ats.last_checkout_time::time < COALESCE(uts.off_duty_time, '17:00:00'::time) THEN true
                 ELSE false
             END as is_early_leave
         FROM attendance_summary ats

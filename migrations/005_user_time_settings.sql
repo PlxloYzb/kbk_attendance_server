@@ -2,8 +2,8 @@
 CREATE TABLE user_time_settings (
     id SERIAL PRIMARY KEY,
     user_id VARCHAR(50) NOT NULL,
-    on_duty_time TIME NOT NULL DEFAULT '09:00:00',
-    off_duty_time TIME NOT NULL DEFAULT '18:00:00',
+    on_duty_time TIME NOT NULL DEFAULT '07:30:00',
+    off_duty_time TIME NOT NULL DEFAULT '17:00:00',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -30,3 +30,12 @@ $$ language 'plpgsql';
 CREATE TRIGGER update_user_time_settings_updated_at 
     BEFORE UPDATE ON user_time_settings 
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Populate default time settings for all existing users
+INSERT INTO user_time_settings (user_id, on_duty_time, off_duty_time)
+SELECT 
+    user_id,
+    '07:30:00'::time as on_duty_time,
+    '17:00:00'::time as off_duty_time
+FROM user_info
+ON CONFLICT (user_id) DO NOTHING;

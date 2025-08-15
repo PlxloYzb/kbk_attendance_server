@@ -80,6 +80,9 @@ const admin = {
             case 'time-settings':
                 await this.loadTimeSettings();
                 break;
+            case 'sync-status':
+                await this.loadSyncStatus();
+                break;
             case 'export':
                 this.setupExport();
                 break;
@@ -1687,8 +1690,8 @@ const admin = {
         `;
 
         users.forEach(user => {
-            const onDutyTime = user.on_duty_time || '09:00:00';
-            const offDutyTime = user.off_duty_time || '18:00:00';
+            const onDutyTime = user.on_duty_time || '07:30:00';
+            const offDutyTime = user.off_duty_time || '17:00:00';
             const hasCustomSettings = user.on_duty_time !== null;
             
             html += `
@@ -1741,11 +1744,11 @@ const admin = {
                     <div class="batch-controls">
                         <div class="time-group">
                             <label>On Duty:</label>
-                            <input type="time" id="batch-on-duty" value="09:00">
+                            <input type="time" id="batch-on-duty" value="07:30">
                         </div>
                         <div class="time-group">
                             <label>Off Duty:</label>
-                            <input type="time" id="batch-off-duty" value="18:00">
+                            <input type="time" id="batch-off-duty" value="17:00">
                         </div>
                         <button id="apply-batch-times" class="btn btn-secondary">
                             Apply to Selected Users
@@ -1852,7 +1855,7 @@ const admin = {
     },
 
     async resetUserTimeSetting(userId) {
-        if (!confirm(`Reset time settings for user ${userId} to default (9:00-18:00)?`)) {
+        if (!confirm(`Reset time settings for user ${userId} to default (7:30-17:00)?`)) {
             return;
         }
 
@@ -1862,8 +1865,8 @@ const admin = {
                 // Update UI to show default times
                 const row = document.querySelector(`tr[data-user-id="${userId}"]`);
                 if (row) {
-                    row.querySelector('.on-duty-time').value = '09:00';
-                    row.querySelector('.off-duty-time').value = '18:00';
+                    row.querySelector('.on-duty-time').value = '07:30';
+                    row.querySelector('.off-duty-time').value = '17:00';
                     const statusBadge = row.querySelector('.status-badge');
                     statusBadge.textContent = 'Default';
                     statusBadge.className = 'status-badge default';
@@ -1938,5 +1941,136 @@ const admin = {
                 saveBtn.textContent = originalText;
             }
         }
+    },
+
+    // Sync Status Management
+    async loadSyncStatus() {
+        await this.updateSyncStatus();
+        this.setupSyncEvents();
+    },
+
+    async updateSyncStatus() {
+        try {
+            const response = await api.getSyncStatus();
+            if (response.success) {
+                const status = response.data;
+                this.displaySyncStatus(status);
+            } else {
+                console.error('Failed to get sync status:', response.message);
+                this.displaySyncError('Failed to load sync status');
+            }
+        } catch (error) {
+            console.error('Error getting sync status:', error);
+            this.displaySyncError('Error loading sync status');
+        }
+    },
+
+    displaySyncStatus(status) {
+        document.getElementById('total-users-count').textContent = status.total_users;
+        document.getElementById('users-with-settings-count').textContent = status.users_with_time_settings;
+        
+        const indicator = document.getElementById('sync-status-indicator');
+        const missingInfo = document.getElementById('missing-users-info');
+        const missingCount = document.getElementById('missing-users-count');
+        
+        if (status.is_synced) {
+            indicator.textContent = 'Synced';
+            indicator.className = 'status-badge synced';
+            missingInfo.style.display = 'none';
+        } else {
+            indicator.textContent = 'Out of Sync';
+            indicator.className = 'status-badge out-of-sync';
+            missingInfo.style.display = 'block';
+            missingCount.textContent = status.missing_count;
+        }
+    },
+
+    displaySyncError(message) {
+        document.getElementById('total-users-count').textContent = 'Error';
+        document.getElementById('users-with-settings-count').textContent = 'Error';
+        document.getElementById('sync-status-indicator').textContent = message;
+        document.getElementById('sync-status-indicator').className = 'status-badge error';
+    },
+
+    setupSyncEvents() {
+        // Check status button
+        document.getElementById('check-sync-status-btn').addEventListener('click', () => {
+            this.updateSyncStatus();
+        });
+        
+        // Manual sync button
+        document.getElementById('manual-sync-btn').addEventListener('click', () => {
+            this.performManualSync();
+        });
+    },
+
+    async performManualSync() {
+        const syncBtn = document.getElementById('manual-sync-btn');
+        const resultDiv = document.getElementById('sync-result');
+        
+        try {
+            syncBtn.disabled = true;
+            syncBtn.textContent = '🔄 Syncing...';
+            resultDiv.style.display = 'none';
+            
+            const response = await api.manualSyncTimeSettings();
+            
+            if (response.success) {
+                const result = response.data;
+                this.displaySyncResult({
+                    success: true,
+                    message: result.message,
+                    count: result.synced_count,
+                    timestamp: result.timestamp
+                });
+                
+                // Refresh status after sync
+                await this.updateSyncStatus();
+            } else {
+                this.displaySyncResult({
+                    success: false,
+                    message: response.message || 'Sync failed'
+                });
+            }
+        } catch (error) {
+            this.displaySyncResult({
+                success: false,
+                message: 'Error during sync: ' + error.message
+            });
+        } finally {
+            syncBtn.disabled = false;
+            syncBtn.textContent = '🔄 Manual Sync';
+        }
+    },
+
+    displaySyncResult(result) {
+        const resultDiv = document.getElementById('sync-result');
+        
+        if (result.success) {
+            resultDiv.innerHTML = `
+                <div class="sync-success">
+                    <h4>✅ Sync Completed Successfully</h4>
+                    <p>${result.message}</p>
+                    ${result.count > 0 ? `<p><strong>${result.count}</strong> users were synced with default time settings.</p>` : ''}
+                    ${result.timestamp ? `<p><small>Completed at: ${new Date(result.timestamp).toLocaleString()}</small></p>` : ''}
+                </div>
+            `;
+        } else {
+            resultDiv.innerHTML = `
+                <div class="sync-error">
+                    <h4>❌ Sync Failed</h4>
+                    <p>${result.message}</p>
+                </div>
+            `;
+        }
+        
+        resultDiv.style.display = 'block';
+        
+        // Auto-hide after 10 seconds
+        setTimeout(() => {
+            if (resultDiv.style.display !== 'none') {
+                resultDiv.style.display = 'none';
+            }
+        }, 10000);
     }
 };

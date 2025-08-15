@@ -235,6 +235,17 @@ const api = {
             method: 'DELETE'
         });
     },
+
+    // Sync API
+    async manualSyncTimeSettings() {
+        return this.request(`${this.baseUrl}/sync/time-settings`, {
+            method: 'POST'
+        });
+    },
+
+    async getSyncStatus() {
+        return this.request(`${this.baseUrl}/sync/status`);
+    },
     
     // Export
     async exportCsv() {

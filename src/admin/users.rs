@@ -41,7 +41,16 @@ pub async fn create_user(
         return HttpResponse::Forbidden().json(ApiResponse::<()>::error("Admin access required"));
     }
 
-    match sqlx::query_as::<_, UserInfo>(
+    let mut transaction = match pool.begin().await {
+        Ok(tx) => tx,
+        Err(e) => {
+            log::error!("Failed to start transaction: {:?}", e);
+            return HttpResponse::InternalServerError().json(ApiResponse::<()>::error("Database error"));
+        }
+    };
+
+    // Create user
+    let user_result = sqlx::query_as::<_, UserInfo>(
         r#"
         INSERT INTO user_info (user_id, user_name, department, department_name, passkey)
         VALUES ($1, $2, $3, $4, $5)
@@ -53,14 +62,49 @@ pub async fn create_user(
     .bind(user_req.department)
     .bind(&user_req.department_name)
     .bind(&user_req.passkey)
-    .fetch_one(pool.as_ref())
-    .await
-    {
-        Ok(user) => HttpResponse::Created().json(ApiResponse::success(user, "User created")),
+    .fetch_one(&mut *transaction)
+    .await;
+
+    match user_result {
+        Ok(user) => {
+            // Create default time settings for the new user
+            let time_settings_result = sqlx::query(
+                "INSERT INTO user_time_settings (user_id, on_duty_time, off_duty_time) VALUES ($1, '07:30:00', '17:00:00')"
+            )
+            .bind(&user_req.user_id)
+            .execute(&mut *transaction)
+            .await;
+
+            match time_settings_result {
+                Ok(_) => {
+                    if let Err(e) = transaction.commit().await {
+                        log::error!("Failed to commit transaction: {:?}", e);
+                        return HttpResponse::InternalServerError().json(ApiResponse::<()>::error("Failed to save user"));
+                    }
+                    HttpResponse::Created().json(ApiResponse::success(user, "User created successfully"))
+                }
+                Err(e) => {
+                    log::error!("Failed to create time settings for user: {:?}", e);
+                    if let Err(rollback_err) = transaction.rollback().await {
+                        log::error!("Failed to rollback transaction: {:?}", rollback_err);
+                    }
+                    HttpResponse::InternalServerError().json(ApiResponse::<()>::error("Failed to create user time settings"))
+                }
+            }
+        }
         Err(sqlx::Error::Database(db_err)) if db_err.is_unique_violation() => {
+            if let Err(rollback_err) = transaction.rollback().await {
+                log::error!("Failed to rollback transaction: {:?}", rollback_err);
+            }
             HttpResponse::BadRequest().json(ApiResponse::<()>::error("User ID already exists"))
-        },
-        Err(_) => HttpResponse::InternalServerError().json(ApiResponse::<()>::error("Failed to create user")),
+        }
+        Err(e) => {
+            log::error!("Failed to create user: {:?}", e);
+            if let Err(rollback_err) = transaction.rollback().await {
+                log::error!("Failed to rollback transaction: {:?}", rollback_err);
+            }
+            HttpResponse::InternalServerError().json(ApiResponse::<()>::error("Failed to create user"))
+        }
     }
 }
 
