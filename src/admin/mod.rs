@@ -42,6 +42,8 @@ pub fn admin_routes() -> actix_web::Scope {
                 .service(
                     web::scope("/stats")
                         .route("/department", web::get().to(stats::get_department_stats))
+                        .route("/department/filtered", web::get().to(stats::get_filtered_department_stats))
+                        .route("/user-detail", web::get().to(stats::get_user_detail))
                         .route("/export", web::get().to(stats::export_attendance_csv))
                 )
                 .service(

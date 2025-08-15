@@ -160,6 +160,26 @@ const api = {
     async getDepartmentStats() {
         return this.request(`${this.baseUrl}/stats/department`);
     },
+
+    async getFilteredDepartmentStats(params = {}) {
+        const queryParams = new URLSearchParams();
+        if (params.month) queryParams.append('month', params.month);
+        if (params.year) queryParams.append('year', params.year);
+        if (params.user_name) queryParams.append('user_name', params.user_name);
+        if (params.department) queryParams.append('department', params.department);
+        
+        const url = `${this.baseUrl}/stats/department/filtered${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+        return this.request(url);
+    },
+
+    async getUserDetail(user_id, month, year) {
+        const queryParams = new URLSearchParams({
+            user_id,
+            month: month.toString(),
+            year: year.toString()
+        });
+        return this.request(`${this.baseUrl}/stats/user-detail?${queryParams.toString()}`);
+    },
     
     // Admin Users
     async getAdminUsers() {

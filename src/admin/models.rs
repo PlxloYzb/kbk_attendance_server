@@ -142,6 +142,43 @@ pub struct ResetPasswordRequest {
     pub new_password: String,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct FilteredDepartmentStatsRequest {
+    pub month: Option<u32>,
+    pub year: Option<i32>,
+    pub user_name: Option<String>,
+    pub department: Option<i32>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UserDetailRequest {
+    pub user_id: String,
+    pub month: u32,
+    pub year: i32,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UserDetailResponse {
+    pub user_id: String,
+    pub user_name: Option<String>,
+    pub month: u32,
+    pub year: i32,
+    pub total_days: i64,
+    pub total_hours: f64,
+    pub records: Vec<UserDetailRecord>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UserDetailRecord {
+    pub date: chrono::NaiveDate,
+    pub first_checkin: Option<DateTime<Utc>>,
+    pub last_checkout: Option<DateTime<Utc>>,
+    pub total_work_minutes: Option<i32>,
+    pub total_sessions: Option<i32>,
+    pub is_late: bool,
+    pub is_early_leave: bool,
+}
+
 #[derive(Debug, Clone)]
 pub struct AdminSession {
     pub user_id: i32,
