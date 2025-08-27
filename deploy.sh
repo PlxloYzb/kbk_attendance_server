@@ -6,6 +6,14 @@ APP_NAME="kbk-attendance"
 APP_DIR="$(pwd)"
 SERVICE_FILE="/etc/systemd/system/${APP_NAME}.service"
 
+# Find cargo path
+CARGO_PATH=$(which cargo)
+if [ -z "$CARGO_PATH" ]; then
+    # Common cargo installation path
+    CARGO_PATH="$HOME/.cargo/bin/cargo"
+fi
+
+echo "Using cargo at: $CARGO_PATH"
 echo "Creating systemd service..."
 sudo tee ${SERVICE_FILE} > /dev/null << EOF
 [Unit]
@@ -14,8 +22,10 @@ After=network.target
 
 [Service]
 Type=simple
+User=$USER
 WorkingDirectory=${APP_DIR}
-ExecStart=/usr/bin/cargo run --release
+Environment="PATH=$HOME/.cargo/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStart=${CARGO_PATH} run --release
 Restart=always
 RestartSec=10
 StandardOutput=journal
